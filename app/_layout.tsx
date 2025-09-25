@@ -1,24 +1,37 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import 'react-native-reanimated';
+// Корневой файл навигации для Expo Router, переключен на BottomTabs для вкладок внизу экрана.
 
-import { useColorScheme } from '@/hooks/use-color-scheme';
+import { Tabs } from 'expo-router';
 
-export const unstable_settings = {
-  anchor: '(tabs)',
+const Layout = () => {
+    return (
+        <Tabs
+            screenOptions={{
+                tabBarStyle: { backgroundColor: '#000' },
+                tabBarActiveTintColor: '#fff',
+                tabBarInactiveTintColor: '#888',
+            }}>
+            <Tabs.Screen
+                name="index"
+                options={{ title: 'Главная', headerShown: true }}
+            />
+            <Tabs.Screen
+                name="game"
+                options={{ title: 'Игра', headerShown: false }}
+            />
+            <Tabs.Screen
+                name="leaderboard"
+                options={{ title: 'Таблица лидеров', headerShown: true }}
+            />
+            <Tabs.Screen
+                name="settings"
+                options={{ title: 'Настройки', headerShown: true }}
+            />
+            <Tabs.Screen
+                name="shop"
+                options={{ title: 'Магазин', headerShown: true }}
+            />
+        </Tabs>
+    );
 };
 
-export default function RootLayout() {
-  const colorScheme = useColorScheme();
-
-  return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
-  );
-}
+export default Layout;
