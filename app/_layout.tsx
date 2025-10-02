@@ -23,12 +23,12 @@ const Layout = () => {
                     elevation: 0,
                     shadowOpacity: 0,
                 },
+                headerShown: false,
             }}>
             <Tabs.Screen
                 name="index"
                 options={{
                     title: 'Главная',
-                    headerShown: false,
                     tabBarIcon: ({ color }) => <FontAwesome name="home" size={28} color={color} />,
                 }}
             />
