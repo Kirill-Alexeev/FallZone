@@ -1,5 +1,3 @@
-// Стили для анимированных звезд.
-
 import { StyleSheet } from 'react-native';
 
 export const starsAnimationStyles = StyleSheet.create({

@@ -1,5 +1,3 @@
-// Стили для CharacterPreview.
-
 import { StyleSheet } from 'react-native';
 
 export const characterPreviewStyles = StyleSheet.create({

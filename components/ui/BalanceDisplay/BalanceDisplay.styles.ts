@@ -1,5 +1,3 @@
-// Стили для BalanceDisplay.
-
 import { StyleSheet } from 'react-native';
 
 export const balanceDisplayStyles = StyleSheet.create({

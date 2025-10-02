@@ -1,5 +1,7 @@
-// Компонент для анимированных звезд на фоне.
-// 50 случайных звезд с fade in/out через reanimated. Цикл анимации.
+// Создает анимированный звездный фон
+// Генерирует 50 случайных звезд по всему экрану
+// Каждая звезда имеет уникальную анимацию fade in/out
+// Использует React Native Reanimated для плавности
 
 import React, { useEffect } from 'react';
 import { Dimensions, View } from 'react-native';

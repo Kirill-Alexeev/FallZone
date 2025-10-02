@@ -1,5 +1,3 @@
-// Отдельный файл стилей для CustomButton.
-
 import { StyleSheet } from 'react-native';
 
 export const customButtonStyles = StyleSheet.create({

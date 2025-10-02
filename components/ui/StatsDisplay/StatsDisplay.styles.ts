@@ -1,5 +1,3 @@
-// Стили для StatsDisplay.
-
 import { StyleSheet } from 'react-native';
 
 export const statsDisplayStyles = StyleSheet.create({

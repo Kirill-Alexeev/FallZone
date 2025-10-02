@@ -1,5 +1,3 @@
-// Отдельный файл стилей для CustomText.
-
 import { StyleSheet } from 'react-native';
 
 export const customTextStyles = StyleSheet.create({
