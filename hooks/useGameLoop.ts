@@ -25,7 +25,7 @@ const useGameLoop = ({ onUpdate, isRunning }: GameLoopProps) => {
 
     useEffect(() => {
         if (isRunning && animationFrameId.current === null) {
-            lastTimeRef.current = 0; // Сброс времени при старте или возобновлении
+            lastTimeRef.current = 0;
             animationFrameId.current = requestAnimationFrame(gameLoop);
         } else if (!isRunning && animationFrameId.current !== null) {
             cancelAnimationFrame(animationFrameId.current);

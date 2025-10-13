@@ -1,0 +1,90 @@
+import { Dimensions, Platform, StyleSheet } from 'react-native';
+
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
+
+export const gameStyles = StyleSheet.create({
+    container: {
+        flex: 1,
+    },
+    fullScreen: {
+        flex: 1,
+        width: screenWidth,
+        height: screenHeight,
+        position: 'relative',
+    },
+    scoreText: {
+        position: 'absolute',
+        top: Platform.OS === 'ios' ? 60 : 30,
+        width: '100%',
+        textAlign: 'center',
+        fontSize: 30,
+        color: 'white',
+        zIndex: 100,
+    },
+    tapToStart: {
+        position: 'absolute',
+        top: screenHeight / 2 - 20,
+        width: '100%',
+        textAlign: 'center',
+        fontSize: 25,
+        color: 'yellow',
+        zIndex: 100,
+    },
+    gameOverText: {
+        position: 'absolute',
+        top: screenHeight / 2 - 50,
+        width: '100%',
+        textAlign: 'center',
+        fontSize: 40,
+        color: 'red',
+        fontWeight: 'bold',
+        zIndex: 100,
+    },
+    countdownText: {
+        position: 'absolute',
+        top: screenHeight / 2 - 20,
+        width: '100%',
+        textAlign: 'center',
+        fontSize: 80,
+        color: 'white',
+        fontWeight: 'bold',
+        zIndex: 200,
+    },
+    restartButton: {
+        fontSize: 30,
+        color: '#00FFFF',
+        fontWeight: 'bold',
+        textAlign: 'center',
+    },
+    restartButtonContainer: {
+        position: 'absolute',
+        top: screenHeight / 2 + 60,
+        left: 0,
+        right: 0,
+        padding: 20,
+        zIndex: 200,
+    },
+    finalScoreText: {
+        position: 'absolute',
+        top: screenHeight / 2 + 20,
+        width: '100%',
+        textAlign: 'center',
+        fontSize: 25,
+        color: 'yellow',
+        fontWeight: 'bold',
+        zIndex: 200,
+    },
+    gameArea: {
+        flex: 1,
+        width: '100%',
+        height: '100%',
+    },
+    loadingText: {
+        fontSize: 24,
+        color: '#00FFFF',
+        fontWeight: 'bold',
+        textAlign: 'center',
+        marginTop: 20,
+        paddingTop: Platform.OS === 'ios' ? 40 : 20,
+    },
+});

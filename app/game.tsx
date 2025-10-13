@@ -1,20 +1,21 @@
-// Основной экран игры
-// Заглушка для будущей игровой механики
-
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Dimensions, Platform, StyleSheet, TouchableWithoutFeedback, View } from 'react-native';
+import { TouchableWithoutFeedback, View } from 'react-native';
+
 import Obstacle from '../components/Obstacle';
 import Player from '../components/Player';
 import BackgroundWithStars from '../components/ui/BackgroundWithStars';
 import CustomText from '../components/ui/CustomText';
 import useGameLoop from '../hooks/useGameLoop';
-import GameEngine from '../services/gameEngine';
+import SpaceGameEngine from '../services/gameEngine';
+import { gameStyles } from './game.styles';
 
+// Типы для игры
 interface PlayerState {
     x: number;
     y: number;
     velocityY: number;
     size: number;
+    rotation: number;
 }
 
 interface ObstacleState {
@@ -22,42 +23,59 @@ interface ObstacleState {
     y: number;
     width: number;
     height: number;
-    gap: number;
+    type: 'comet' | 'asteroid' | 'drone' | 'wall';
     id: string;
     passed?: boolean;
+    gap?: number; // Для стен с отверстиями
+    trajectory?: { x: number; y: number }[]; // Для движения по траектории
+    speed?: number;
+}
+
+interface BonusState {
+    x: number;
+    y: number;
+    type: 'shield' | 'magnet' | 'slowmo' | 'coin';
+    id: string;
+    collected?: boolean;
 }
 
 interface GameState {
     player: PlayerState;
     obstacles: ObstacleState[];
+    bonuses: BonusState[];
     score: number;
+    coins: number;
     gameOver: boolean;
     gameStarted: boolean;
+    activeBonuses: {
+        shield: boolean;
+        magnet: boolean;
+        slowmo: boolean;
+    };
 }
 
-const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
-
 const GameScreen = () => {
-    const [gameEngine, setGameEngine] = useState<GameEngine | null>(null);
+    const [gameEngine, setGameEngine] = useState<SpaceGameEngine | null>(null);
     const [gameState, setGameState] = useState<GameState | null>(null);
     const [isRunning, setIsRunning] = useState(false);
-    const [countdown, setCountdown] = useState(0); // Новое состояние для обратного отсчета
-    const [gameStarted, setGameStarted] = useState(false); // Флаг для отслеживания начала игры
+    const [countdown, setCountdown] = useState(0);
+    const [gameStarted, setGameStarted] = useState(false);
 
-    const gameEngineRef = useRef<GameEngine | null>(null);
+    const gameEngineRef = useRef<SpaceGameEngine | null>(null);
 
-    const handleGameOver = useCallback((score: number) => {
+    const handleGameOver = useCallback((score: number, coins: number) => {
         setIsRunning(false);
-        setCountdown(0); // Сбрасываем отсчет
-        // Не показываем Alert, счет будет отображаться на экране
+        setCountdown(0);
+        // Сохраняем рекорд и монеты
+        console.log('Game Over - Score:', score, 'Coins:', coins);
     }, []);
 
-    const handleScoreUpdate = useCallback((score: number) => {
-        setGameState(prev => prev ? ({ ...prev, score }) : null);
+    const handleScoreUpdate = useCallback((score: number, coins: number) => {
+        setGameState(prev => prev ? ({ ...prev, score, coins }) : null);
     }, []);
 
     useEffect(() => {
-        const newGameEngine = new GameEngine(handleGameOver, handleScoreUpdate, screenHeight);
+        const newGameEngine = new SpaceGameEngine(handleGameOver, handleScoreUpdate);
         gameEngineRef.current = newGameEngine;
         setGameEngine(newGameEngine);
         setGameState(newGameEngine.getInitialState());
@@ -74,18 +92,18 @@ const GameScreen = () => {
 
     const startGame = () => {
         if (gameEngine) {
-            setGameStarted(true); // Отмечаем, что игра была начата пользователем
-            setIsRunning(false); // Сначала останавливаем игру
-            setCountdown(3); // Начинаем отсчет с 3
+            setGameStarted(true);
+            setIsRunning(false);
+            setCountdown(3);
             resetLoop();
         }
     };
 
     const restartGame = () => {
         if (gameEngine) {
-            setGameStarted(true); // Отмечаем, что игра была начата пользователем
-            setIsRunning(false); // Сначала останавливаем игру
-            setCountdown(3); // Начинаем отсчет с 3
+            setGameStarted(true);
+            setIsRunning(false);
+            setCountdown(3);
             gameEngine.resetGame();
             const newState = gameEngine.getInitialState();
             setGameState(newState);
@@ -93,13 +111,11 @@ const GameScreen = () => {
         }
     };
 
-    const handlePress = () => {
+    const handleTap = () => {
         if (!isRunning && !gameState?.gameStarted && countdown === 0 && !gameState?.gameOver) {
             startGame();
         } else if (isRunning && gameEngine) {
             gameEngine.jump();
-        } else if (gameState?.gameOver) {
-            // Если игра окончена, ничего не делаем при нажатии, ждем кнопки "Начать заново"
         }
     };
 
@@ -110,7 +126,6 @@ const GameScreen = () => {
                 setCountdown(countdown - 1);
             }, 1000);
         } else if (countdown === 0 && !isRunning && gameEngine && gameState && !gameState.gameOver && gameStarted) {
-            // Когда отсчет завершен и игра была начата пользователем, запускаем игру
             gameEngine.startGame();
             setIsRunning(true);
         }
@@ -120,47 +135,74 @@ const GameScreen = () => {
     if (!gameState) {
         return (
             <BackgroundWithStars>
-                <CustomText style={styles.title}>Загрузка...</CustomText>
+                <CustomText style={gameStyles.loadingText}>Загрузка...</CustomText>
             </BackgroundWithStars>
         );
     }
 
     return (
         <BackgroundWithStars>
-            <View style={styles.fullScreen}>
-                <CustomText style={styles.scoreText}>Счет: {gameState.score}</CustomText>
+            <View style={gameStyles.fullScreen}>
+                {/* HUD */}
+                <CustomText style={gameStyles.scoreText}>
+                    Счет: {gameState.score} | Монеты: {gameState.coins}
+                </CustomText>
+
+                {/* Активные бонусы */}
+                {gameState.activeBonuses.shield && (
+                    <CustomText style={{ position: 'absolute', top: 100, left: 20, color: 'cyan' }}>
+                        Щит активен!
+                    </CustomText>
+                )}
+
+                {/* Экран начала игры */}
                 {!gameState.gameStarted && !gameState.gameOver && countdown === 0 && !gameStarted && (
-                    <TouchableWithoutFeedback onPress={handlePress}>
-                        <CustomText style={styles.tapToStart}>Нажмите, чтобы начать</CustomText>
+                    <TouchableWithoutFeedback onPress={handleTap}>
+                        <CustomText style={gameStyles.tapToStart}>
+                            Нажмите, чтобы начать
+                        </CustomText>
                     </TouchableWithoutFeedback>
                 )}
+
+                {/* Экран завершения игры */}
                 {gameState.gameOver && (
                     <>
-                        <CustomText style={styles.gameOverText}>Игра окончена!</CustomText>
-                        <CustomText style={styles.finalScoreText}>Ваш счет: {gameState.score}</CustomText>
+                        <CustomText style={gameStyles.gameOverText}>Игра окончена!</CustomText>
+                        <CustomText style={gameStyles.finalScoreText}>
+                            Ваш счет: {gameState.score}
+                        </CustomText>
                         <TouchableWithoutFeedback onPress={restartGame}>
-                            <View style={styles.restartButtonContainer}>
-                                <CustomText style={styles.restartButton}>Начать заново</CustomText>
+                            <View style={gameStyles.restartButtonContainer}>
+                                <CustomText style={gameStyles.restartButton}>
+                                    Начать заново
+                                </CustomText>
                             </View>
                         </TouchableWithoutFeedback>
                     </>
                 )}
+
+                {/* Обратный отсчет */}
                 {countdown > 0 && (
-                    <CustomText style={styles.countdownText}>{countdown}</CustomText>
+                    <CustomText style={gameStyles.countdownText}>{countdown}</CustomText>
                 )}
                 {countdown === 0 && gameState?.gameStarted && !isRunning && !gameState.gameOver && (
-                    <CustomText style={styles.countdownText}>GO!</CustomText>
+                    <CustomText style={gameStyles.countdownText}>GO!</CustomText>
                 )}
 
+                {/* Игровая область */}
                 {!gameState.gameOver && (
-                    <TouchableWithoutFeedback onPress={handlePress} style={styles.gameArea}>
-                        <View style={styles.gameArea}>
+                    <TouchableWithoutFeedback onPress={handleTap} style={gameStyles.gameArea}>
+                        <View style={gameStyles.gameArea}>
+                            {/* Игрок */}
                             <Player
                                 x={gameState.player.x}
                                 y={gameState.player.y}
                                 size={gameState.player.size}
-                                character="default"
+                                rotation={gameState.player.rotation}
+                                character="astronaut"
                             />
+
+                            {/* Препятствия */}
                             {gameState.obstacles.map(obstacle => (
                                 <Obstacle
                                     key={obstacle.id}
@@ -168,9 +210,27 @@ const GameScreen = () => {
                                     y={obstacle.y}
                                     width={obstacle.width}
                                     height={obstacle.height}
+                                    type={obstacle.type}
                                     gap={obstacle.gap}
-                                    color="green"
-                                    screenHeight={screenHeight}
+                                />
+                            ))}
+
+                            {/* Бонусы */}
+                            {gameState.bonuses.map(bonus => (
+                                <View
+                                    key={bonus.id}
+                                    style={{
+                                        position: 'absolute',
+                                        left: bonus.x,
+                                        top: bonus.y,
+                                        width: 30,
+                                        height: 30,
+                                        backgroundColor:
+                                            bonus.type === 'shield' ? 'cyan' :
+                                                bonus.type === 'magnet' ? 'yellow' :
+                                                    bonus.type === 'slowmo' ? 'purple' : 'gold',
+                                        borderRadius: 15,
+                                    }}
                                 />
                             ))}
                         </View>
@@ -180,97 +240,5 @@ const GameScreen = () => {
         </BackgroundWithStars>
     );
 };
-
-const styles = StyleSheet.create({
-    title: {
-        fontSize: 24,
-        color: '#00FFFF',
-        fontWeight: 'bold',
-        textAlign: 'center',
-        marginTop: 20,
-        paddingTop: Platform.OS === 'ios' ? 40 : 20,
-    },
-    placeholder: {
-        color: '#888',
-        textAlign: 'center',
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        marginTop: 20,
-    },
-    fullScreen: {
-        flex: 1,
-        width: screenWidth,
-        height: screenHeight,
-        position: 'relative',
-    },
-    scoreText: {
-        position: 'absolute',
-        top: Platform.OS === 'ios' ? 60 : 30,
-        width: '100%',
-        textAlign: 'center',
-        fontSize: 30,
-        color: 'white',
-        zIndex: 100,
-    },
-    tapToStart: {
-        position: 'absolute',
-        top: screenHeight / 2 - 20,
-        width: '100%',
-        textAlign: 'center',
-        fontSize: 25,
-        color: 'yellow',
-        zIndex: 100,
-    },
-    gameOverText: {
-        position: 'absolute',
-        top: screenHeight / 2 - 50,
-        width: '100%',
-        textAlign: 'center',
-        fontSize: 40,
-        color: 'red',
-        fontWeight: 'bold',
-        zIndex: 100,
-    },
-    countdownText: {
-        position: 'absolute',
-        top: screenHeight / 2 - 20,
-        width: '100%',
-        textAlign: 'center',
-        fontSize: 80,
-        color: 'white',
-        fontWeight: 'bold',
-        zIndex: 200,
-    },
-    restartButton: {
-        fontSize: 30,
-        color: '#00FFFF',
-        fontWeight: 'bold',
-        textAlign: 'center',
-    },
-    restartButtonContainer: {
-        position: 'absolute',
-        top: screenHeight / 2 + 60,
-        left: 0,
-        right: 0,
-        padding: 20,
-        zIndex: 200,
-    },
-    finalScoreText: {
-        position: 'absolute',
-        top: screenHeight / 2 + 20,
-        width: '100%',
-        textAlign: 'center',
-        fontSize: 25,
-        color: 'yellow',
-        fontWeight: 'bold',
-        zIndex: 200,
-    },
-    gameArea: {
-        flex: 1,
-        width: '100%',
-        height: '100%',
-    },
-});
 
 export default GameScreen;
