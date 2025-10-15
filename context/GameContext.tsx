@@ -19,17 +19,27 @@ interface GameContextType {
         deathBy?: 'comet' | 'asteroid' | 'drone' | 'wall';
         bonusesCollected?: { type: 'shield' | 'magnet' | 'slowmo' | 'coin'; count: number }[];
     }) => void;
+    refreshGameData: () => Promise<void>;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
 
 export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [gameData, setGameData] = useState<GameData>(DEFAULT_GAME_DATA);
+    const [isInitialized, setIsInitialized] = useState(false);
+
+    const refreshGameData = async () => {
+        const data = await loadGameData();
+        setGameData(data);
+        console.log('Game data refreshed:', data);
+    };
 
     useEffect(() => {
         const initializeData = async () => {
             const data = await loadGameData();
             setGameData(data);
+            setIsInitialized(true);
+            console.log('GameContext initialized with data:', data);
         };
         initializeData();
     }, []);
@@ -37,6 +47,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const saveData = async (newData: GameData) => {
         setGameData(newData);
         await saveGameData(newData);
+        console.log('Game data saved:', newData);
     };
 
     const updateStats = (newStats: Partial<GameStats>) => {
@@ -59,7 +70,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         saveData(updatedData);
     };
 
-    // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Всегда обновляем рекорд
     const updateHighScore = (score: number) => {
         console.log('Updating high score:', score, 'Current:', gameData.highScore);
         if (score > gameData.highScore) {
@@ -114,6 +124,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         deathBy?: 'comet' | 'asteroid' | 'drone' | 'wall';
         bonusesCollected?: { type: 'shield' | 'magnet' | 'slowmo' | 'coin'; count: number }[];
     }) => {
+        console.log('Recording game session:', sessionData);
+
         const bonusesByType = { ...gameData.stats.bonusesByType };
 
         if (sessionData.bonusesCollected) {
@@ -152,6 +164,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         saveData(updatedData);
     };
 
+    if (!isInitialized) {
+        return null; // или loading indicator
+    }
+
     return (
         <GameContext.Provider value={{
             gameData,
@@ -162,7 +178,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             unlockSkin,
             equipSkin,
             getCurrentSkin,
-            recordGameSession
+            recordGameSession,
+            refreshGameData
         }}>
             {children}
         </GameContext.Provider>

@@ -1,14 +1,10 @@
-// Стартовый экран приложения с основной информацией
-// Отображает баланс и рекорд игрока (пока заглушки)
-// Предпросмотр текущего персонажа (добавить динамичность)
-// Кнопка перехода к игре
-// Кнопка настроек (пока не работает)
-
+// app/index.tsx
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React from 'react';
+import React, { useState } from 'react';
 import { View } from 'react-native';
 import SettingsSvg from '../assets/sprites/ui/settings.svg';
+import SettingsModal from '../components/SettingsModal';
 import BalanceDisplay from '../components/ui/BalanceDisplay';
 import CharacterPreview from '../components/ui/CharacterPreview';
 import CustomButton from '../components/ui/CustomButton';
@@ -19,24 +15,26 @@ import { homeScreenStyles } from './index.styles';
 
 const HomeScreen = () => {
     const router = useRouter();
-    const balance = 500; // Заглушка, позже из storage
-    const highScore = 1000; // Заглушка
+    const [settingsVisible, setSettingsVisible] = useState(false);
 
     const openSettings = () => {
-        // Позже: Открыть модал или router.push('/settings')
-        console.log('Открыть настройки');
+        setSettingsVisible(true);
+    };
+
+    const closeSettings = () => {
+        setSettingsVisible(false);
     };
 
     return (
         <LinearGradient
-            colors={['#000', '#4B0082', '#00008B']} // Черный, темно-фиолетовый, темно-синий
+            colors={['#000', '#4B0082', '#00008B']}
             style={homeScreenStyles.container}
         >
             <StarsAnimation />
             <View style={homeScreenStyles.header}>
                 <CustomText style={homeScreenStyles.logo}>Fall Zone</CustomText>
                 <View style={homeScreenStyles.topRow}>
-                    <BalanceDisplay balance={balance} />
+                    <BalanceDisplay />
                     <CustomButton
                         icon={<SettingsSvg width={30} height={30} />}
                         onPress={openSettings}
@@ -50,7 +48,13 @@ const HomeScreen = () => {
                     onPress={() => router.push('/game')}
                 />
             </View>
-            <StatsDisplay highScore={highScore} style={homeScreenStyles.statsDisplay} />
+            <StatsDisplay />
+
+            {/* Модальное окно статистики */}
+            <SettingsModal
+                visible={settingsVisible}
+                onClose={closeSettings}
+            />
         </LinearGradient>
     );
 };

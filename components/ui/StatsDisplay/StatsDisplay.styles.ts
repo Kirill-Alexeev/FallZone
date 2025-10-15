@@ -10,4 +10,8 @@ export const statsDisplayStyles = StyleSheet.create({
         fontSize: 16,
         marginBottom: 60,
     },
+    subText: {
+        color: '#FFF',
+        fontSize: 15,
+    },
 });

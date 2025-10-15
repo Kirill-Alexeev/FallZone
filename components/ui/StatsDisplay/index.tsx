@@ -1,4 +1,3 @@
-// components/ui/StatsDisplay.tsx
 import React from 'react';
 import { View } from 'react-native';
 import { useGame } from '../../../context/GameContext';
