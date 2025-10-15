@@ -1,3 +1,4 @@
+// hooks/useGameLoop.tsx
 import { useCallback, useEffect, useRef } from 'react';
 
 interface GameLoopProps {
@@ -6,30 +7,50 @@ interface GameLoopProps {
 }
 
 const useGameLoop = ({ onUpdate, isRunning }: GameLoopProps) => {
-    const lastTimeRef = useRef(0);
     const animationFrameId = useRef<number | null>(null);
+    const lastTime = useRef<number | null>(null);
+    const isRunningRef = useRef(isRunning);
 
-    const gameLoop = useCallback((currentTime: number) => {
-        if (!isRunning) {
+    // Всегда синхронизируем ref с текущим состоянием
+    useEffect(() => {
+        isRunningRef.current = isRunning;
+    }, [isRunning]);
+
+    const gameLoop = useCallback((timestamp: number) => {
+        if (!isRunningRef.current) {
             animationFrameId.current = null;
+            lastTime.current = null;
             return;
         }
 
-        const deltaTime = currentTime - lastTimeRef.current;
-        if (lastTimeRef.current !== 0) {
-            onUpdate(deltaTime);
+        if (lastTime.current === null) {
+            lastTime.current = timestamp;
         }
-        lastTimeRef.current = currentTime;
-        animationFrameId.current = requestAnimationFrame(gameLoop);
-    }, [isRunning, onUpdate]);
+
+        const deltaTime = timestamp - lastTime.current;
+        lastTime.current = timestamp;
+
+        // Вызываем обновление игры
+        onUpdate(deltaTime);
+
+        // Запрашиваем следующий кадр только если игра еще запущена
+        if (isRunningRef.current) {
+            animationFrameId.current = requestAnimationFrame(gameLoop);
+        }
+    }, [onUpdate]);
 
     useEffect(() => {
-        if (isRunning && animationFrameId.current === null) {
-            lastTimeRef.current = 0;
-            animationFrameId.current = requestAnimationFrame(gameLoop);
-        } else if (!isRunning && animationFrameId.current !== null) {
-            cancelAnimationFrame(animationFrameId.current);
-            animationFrameId.current = null;
+        if (isRunning) {
+            if (animationFrameId.current === null) {
+                lastTime.current = null;
+                animationFrameId.current = requestAnimationFrame(gameLoop);
+            }
+        } else {
+            if (animationFrameId.current !== null) {
+                cancelAnimationFrame(animationFrameId.current);
+                animationFrameId.current = null;
+                lastTime.current = null;
+            }
         }
 
         return () => {
@@ -44,7 +65,7 @@ const useGameLoop = ({ onUpdate, isRunning }: GameLoopProps) => {
             cancelAnimationFrame(animationFrameId.current);
             animationFrameId.current = null;
         }
-        lastTimeRef.current = 0;
+        lastTime.current = null;
         if (isRunning) {
             animationFrameId.current = requestAnimationFrame(gameLoop);
         }

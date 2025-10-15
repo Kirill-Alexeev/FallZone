@@ -8,5 +8,6 @@ export const statsDisplayStyles = StyleSheet.create({
     text: {
         color: '#FFF',
         fontSize: 16,
+        marginBottom: 60,
     },
 });

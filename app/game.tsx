@@ -1,3 +1,4 @@
+// app/game.tsx
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { TouchableWithoutFeedback, View } from 'react-native';
 
@@ -5,132 +6,137 @@ import Obstacle from '../components/Obstacle';
 import Player from '../components/Player';
 import BackgroundWithStars from '../components/ui/BackgroundWithStars';
 import CustomText from '../components/ui/CustomText';
+import { useGame } from '../context/GameContext';
 import useGameLoop from '../hooks/useGameLoop';
-import SpaceGameEngine from '../services/gameEngine';
+import SpaceGameEngine, { GameState } from '../services/gameEngine';
 import { gameStyles } from './game.styles';
-
-// Типы для игры
-interface PlayerState {
-    x: number;
-    y: number;
-    velocityY: number;
-    size: number;
-    rotation: number;
-}
-
-interface ObstacleState {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    type: 'comet' | 'asteroid' | 'drone' | 'wall';
-    id: string;
-    passed?: boolean;
-    gap?: number; // Для стен с отверстиями
-    trajectory?: { x: number; y: number }[]; // Для движения по траектории
-    speed?: number;
-}
-
-interface BonusState {
-    x: number;
-    y: number;
-    type: 'shield' | 'magnet' | 'slowmo' | 'coin';
-    id: string;
-    collected?: boolean;
-}
-
-interface GameState {
-    player: PlayerState;
-    obstacles: ObstacleState[];
-    bonuses: BonusState[];
-    score: number;
-    coins: number;
-    gameOver: boolean;
-    gameStarted: boolean;
-    activeBonuses: {
-        shield: boolean;
-        magnet: boolean;
-        slowmo: boolean;
-    };
-}
 
 const GameScreen = () => {
     const [gameEngine, setGameEngine] = useState<SpaceGameEngine | null>(null);
     const [gameState, setGameState] = useState<GameState | null>(null);
     const [isRunning, setIsRunning] = useState(false);
     const [countdown, setCountdown] = useState(0);
-    const [gameStarted, setGameStarted] = useState(false);
+    const [showGameOver, setShowGameOver] = useState(false);
+    const [finalScore, setFinalScore] = useState(0);
+    const [gamePhase, setGamePhase] = useState<'idle' | 'countdown' | 'playing' | 'gameOver'>('idle');
 
     const gameEngineRef = useRef<SpaceGameEngine | null>(null);
+    const { recordGameSession, updateHighScore, addCoins, gameData } = useGame();
 
     const handleGameOver = useCallback((score: number, coins: number) => {
+        console.log('GAME SCREEN: Game Over received - Score:', score, 'Coins:', coins);
+
+        // НЕМЕДЛЕННО останавливаем игру
         setIsRunning(false);
-        setCountdown(0);
-        // Сохраняем рекорд и монеты
-        console.log('Game Over - Score:', score, 'Coins:', coins);
-    }, []);
+        setFinalScore(score);
+        setShowGameOver(true);
+        setGamePhase('gameOver');
+
+        // Сохраняем статистику и обновляем рекорд
+        if (gameEngineRef.current) {
+            const sessionData = gameEngineRef.current.getSessionData();
+            console.log('GAME SCREEN: Saving session data:', sessionData);
+
+            recordGameSession(sessionData);
+
+            // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Всегда обновляем рекорд
+            if (score > gameData.highScore) {
+                console.log('New high score!', score, '>', gameData.highScore);
+                updateHighScore(score);
+            }
+
+            if (coins > 0) {
+                addCoins(coins);
+            }
+        }
+    }, [recordGameSession, updateHighScore, addCoins, gameData.highScore]);
 
     const handleScoreUpdate = useCallback((score: number, coins: number) => {
         setGameState(prev => prev ? ({ ...prev, score, coins }) : null);
     }, []);
 
+    // Инициализация игрового движка
     useEffect(() => {
         const newGameEngine = new SpaceGameEngine(handleGameOver, handleScoreUpdate);
         gameEngineRef.current = newGameEngine;
         setGameEngine(newGameEngine);
         setGameState(newGameEngine.getInitialState());
+        setGamePhase('idle'); // Начинаем в режиме ожидания
+
+        return () => {
+            gameEngineRef.current = null;
+        };
     }, [handleGameOver, handleScoreUpdate]);
 
     const updateGame = useCallback((deltaTime: number) => {
-        if (gameEngineRef.current) {
+        if (gameEngineRef.current && isRunning && gamePhase === 'playing') {
             gameEngineRef.current.update(deltaTime);
             setGameState({ ...gameEngineRef.current.getCurrentState() });
         }
-    }, []);
+    }, [isRunning, gamePhase]);
 
     const { resetLoop } = useGameLoop({ onUpdate: updateGame, isRunning });
 
-    const startGame = () => {
-        if (gameEngine) {
-            setGameStarted(true);
-            setIsRunning(false);
+    const startNewGame = () => {
+        if (gameEngineRef.current) {
+            console.log('Starting new game...');
+            setShowGameOver(false);
+            setFinalScore(0);
             setCountdown(3);
+            setGamePhase('countdown');
+            setIsRunning(false);
             resetLoop();
+        }
+    };
+
+    const handleGameStart = () => {
+        if (gameEngineRef.current && countdown === 0 && gamePhase === 'countdown') {
+            console.log('Game starting now!');
+            gameEngineRef.current.startGame();
+            setIsRunning(true);
+            setGamePhase('playing');
         }
     };
 
     const restartGame = () => {
-        if (gameEngine) {
-            setGameStarted(true);
-            setIsRunning(false);
-            setCountdown(3);
-            gameEngine.resetGame();
-            const newState = gameEngine.getInitialState();
-            setGameState(newState);
-            resetLoop();
+        if (gameEngineRef.current) {
+            console.log('Restarting game...');
+            gameEngineRef.current.resetGame();
+            setGameState(gameEngineRef.current.getInitialState());
+            startNewGame();
         }
     };
 
     const handleTap = () => {
-        if (!isRunning && !gameState?.gameStarted && countdown === 0 && !gameState?.gameOver) {
-            startGame();
-        } else if (isRunning && gameEngine) {
-            gameEngine.jump();
+        if (showGameOver) {
+            return; // Игнорируем тапы на экране game over
+        }
+
+        if (gamePhase === 'idle') {
+            // Первый тап - начинаем обратный отсчет
+            startNewGame();
+        } else if (gamePhase === 'playing' && gameEngineRef.current) {
+            // Во время игры - прыжок
+            gameEngineRef.current.jump();
         }
     };
 
+    // Обратный отсчет
     useEffect(() => {
         let timer: NodeJS.Timeout;
-        if (countdown > 0) {
+
+        if (gamePhase === 'countdown' && countdown > 0) {
             timer = setTimeout(() => {
                 setCountdown(countdown - 1);
             }, 1000);
-        } else if (countdown === 0 && !isRunning && gameEngine && gameState && !gameState.gameOver && gameStarted) {
-            gameEngine.startGame();
-            setIsRunning(true);
+        } else if (gamePhase === 'countdown' && countdown === 0) {
+            handleGameStart();
         }
-        return () => clearTimeout(timer);
-    }, [countdown, isRunning, gameEngine, gameState, gameStarted]);
+
+        return () => {
+            if (timer) clearTimeout(timer);
+        };
+    }, [countdown, gamePhase]);
 
     if (!gameState) {
         return (
@@ -156,20 +162,25 @@ const GameScreen = () => {
                 )}
 
                 {/* Экран начала игры */}
-                {!gameState.gameStarted && !gameState.gameOver && countdown === 0 && !gameStarted && (
+                {gamePhase === 'idle' && (
                     <TouchableWithoutFeedback onPress={handleTap}>
-                        <CustomText style={gameStyles.tapToStart}>
-                            Нажмите, чтобы начать
-                        </CustomText>
+                        <View style={gameStyles.tapToStartContainer}>
+                            <CustomText style={gameStyles.tapToStart}>
+                                Нажмите, чтобы начать
+                            </CustomText>
+                        </View>
                     </TouchableWithoutFeedback>
                 )}
 
                 {/* Экран завершения игры */}
-                {gameState.gameOver && (
-                    <>
+                {showGameOver && (
+                    <View style={gameStyles.gameOverContainer}>
                         <CustomText style={gameStyles.gameOverText}>Игра окончена!</CustomText>
                         <CustomText style={gameStyles.finalScoreText}>
-                            Ваш счет: {gameState.score}
+                            Ваш счет: {finalScore}
+                        </CustomText>
+                        <CustomText style={gameStyles.highScoreText}>
+                            Рекорд: {gameData.highScore}
                         </CustomText>
                         <TouchableWithoutFeedback onPress={restartGame}>
                             <View style={gameStyles.restartButtonContainer}>
@@ -178,20 +189,20 @@ const GameScreen = () => {
                                 </CustomText>
                             </View>
                         </TouchableWithoutFeedback>
-                    </>
+                    </View>
                 )}
 
                 {/* Обратный отсчет */}
-                {countdown > 0 && (
+                {gamePhase === 'countdown' && countdown > 0 && (
                     <CustomText style={gameStyles.countdownText}>{countdown}</CustomText>
                 )}
-                {countdown === 0 && gameState?.gameStarted && !isRunning && !gameState.gameOver && (
+                {gamePhase === 'countdown' && countdown === 0 && (
                     <CustomText style={gameStyles.countdownText}>GO!</CustomText>
                 )}
 
                 {/* Игровая область */}
-                {!gameState.gameOver && (
-                    <TouchableWithoutFeedback onPress={handleTap} style={gameStyles.gameArea}>
+                {!showGameOver && gamePhase !== 'idle' && (
+                    <TouchableWithoutFeedback onPress={handleTap}>
                         <View style={gameStyles.gameArea}>
                             {/* Игрок */}
                             <Player
@@ -203,7 +214,7 @@ const GameScreen = () => {
                             />
 
                             {/* Препятствия */}
-                            {gameState.obstacles.map(obstacle => (
+                            {gameState.obstacles.map((obstacle) => (
                                 <Obstacle
                                     key={obstacle.id}
                                     x={obstacle.x}
@@ -216,7 +227,7 @@ const GameScreen = () => {
                             ))}
 
                             {/* Бонусы */}
-                            {gameState.bonuses.map(bonus => (
+                            {gameState.bonuses.map((bonus) => (
                                 <View
                                     key={bonus.id}
                                     style={{

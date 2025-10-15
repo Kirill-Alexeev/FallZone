@@ -1,21 +1,18 @@
-// Показывает игровую статистику (рекорд)
-// Отображает лучший рекорд игрока
-// (Интеграция с хранилищем для реальных данных
-// Добавление дополнительной статистики)
-
+// components/ui/StatsDisplay.tsx
 import React from 'react';
-import { Text, View, ViewStyle } from 'react-native';
+import { View } from 'react-native';
+import { useGame } from '../../../context/GameContext';
+import CustomText from '../CustomText';
 import { statsDisplayStyles } from './StatsDisplay.styles';
 
-interface StatsDisplayProps {
-    highScore: number;
-    style?: ViewStyle;
-}
+const StatsDisplay: React.FC = () => {
+    const { gameData } = useGame();
 
-const StatsDisplay: React.FC<StatsDisplayProps> = ({ highScore, style }) => {
     return (
-        <View style={[statsDisplayStyles.container, style]}>
-            <Text style={statsDisplayStyles.text}>Лучший рекорд: {highScore}</Text>
+        <View style={statsDisplayStyles.container}>
+            <CustomText style={statsDisplayStyles.text}>
+                Лучший рекорд: {gameData.highScore}
+            </CustomText>
         </View>
     );
 };
