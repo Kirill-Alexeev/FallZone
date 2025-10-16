@@ -3,6 +3,7 @@ import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { TouchableWithoutFeedback, View } from 'react-native';
 
+import Bonus from '../components/Bonus';
 import Obstacle from '../components/Obstacle';
 import Player from '../components/Player';
 import BackgroundWithStars from '../components/ui/BackgroundWithStars';
@@ -278,20 +279,12 @@ const GameScreen = () => {
 
                             {/* Бонусы */}
                             {gameState.bonuses.map((bonus) => (
-                                <View
+                                <Bonus
                                     key={bonus.id}
-                                    style={{
-                                        position: 'absolute',
-                                        left: bonus.x,
-                                        top: bonus.y,
-                                        width: 30,
-                                        height: 30,
-                                        backgroundColor:
-                                            bonus.type === 'shield' ? 'cyan' :
-                                                bonus.type === 'magnet' ? 'yellow' :
-                                                    bonus.type === 'slowmo' ? 'purple' : 'gold',
-                                        borderRadius: 15,
-                                    }}
+                                    x={bonus.x}
+                                    y={bonus.y}
+                                    type={bonus.type}
+                                    size={30}
                                 />
                             ))}
                         </View>
