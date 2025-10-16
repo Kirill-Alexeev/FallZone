@@ -34,7 +34,7 @@ export interface Skin {
     animationSpeed?: number;
 }
 
-export interface Settings {
+export interface AudioSettings {
     sound: boolean;
     music: boolean;
     vibration: boolean;
@@ -44,7 +44,7 @@ export interface GameData {
     highScore: number;
     coins: number;
     stats: GameStats;
-    settings: Settings;
+    audioSettings: AudioSettings;
     skins: Skin[];
     currentSkinId: string;
 }
@@ -106,7 +106,7 @@ export const DEFAULT_GAME_DATA: GameData = {
             coin: 0
         }
     },
-    settings: {
+    audioSettings: {
         sound: true,
         music: true,
         vibration: true
@@ -125,7 +125,6 @@ export const loadGameData = async (): Promise<GameData> => {
             console.log('Loaded game data:', data);
             return data;
         }
-        // Если данных нет, сохраняем дефолтные
         await saveGameData(DEFAULT_GAME_DATA);
         return DEFAULT_GAME_DATA;
     } catch (error) {

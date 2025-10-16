@@ -1,9 +1,10 @@
-// components/SettingsScreen/SettingsModal.tsx (альтернативная версия)
-import React from 'react';
+// components/SettingsScreen/SettingsModal.tsx
+import React, { useState } from 'react';
 import { FlatList, Modal, View } from 'react-native';
 import { useGame } from '../../context/GameContext';
 import CustomButton from '../ui/CustomButton';
 import CustomText from '../ui/CustomText';
+import ToggleSwitch from '../ui/ToggleSwitch';
 import { settingsModalStyles } from './SettingsModal.styles';
 
 interface SettingsModalProps {
@@ -11,17 +12,40 @@ interface SettingsModalProps {
     onClose: () => void;
 }
 
-interface StatItem {
+interface SettingsItem {
     id: string;
+    type: 'header' | 'toggle' | 'stat';
     label: string;
-    value: string;
-    section: string;
+    value?: string;
+    section?: string;
 }
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }) => {
-    const { gameData } = useGame();
+    const { gameData, updateAudioSettings, playSound, vibrate } = useGame();
+    const [activeTab, setActiveTab] = useState<'stats' | 'audio'>('stats');
 
-    console.log('SettingsModal - gameData stats:', gameData.stats);
+    // Безопасное получение данных
+    const safeGameData = gameData || {
+        highScore: 0,
+        coins: 0,
+        stats: {
+            totalGames: 0,
+            totalTaps: 0,
+            totalPlayTime: 0,
+            totalCoinsEarned: 0,
+            totalScore: 0,
+            totalDeaths: 0,
+            deathsByObstacle: { comet: 0, asteroid: 0, drone: 0, wall: 0 },
+            totalBonuses: 0,
+            bonusesByType: { shield: 0, magnet: 0, slowmo: 0, coin: 0 }
+        },
+        audioSettings: { sound: true, music: true, vibration: true },
+        skins: [],
+        currentSkinId: 'default'
+    };
+
+    const audioSettings = safeGameData.audioSettings;
+    const stats = safeGameData.stats;
 
     const formatTime = (milliseconds: number) => {
         const seconds = Math.floor(milliseconds / 1000);
@@ -38,47 +62,63 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }) => {
     };
 
     const getDeathPercentage = (deathCount: number) => {
-        const totalDeaths = gameData.stats.totalDeaths;
+        const totalDeaths = stats.totalDeaths;
         if (totalDeaths === 0) return '0%';
         return `${((deathCount / totalDeaths) * 100).toFixed(1)}%`;
     };
 
-    // Создаем данные для FlatList
-    const statsData: StatItem[] = [
-        // Основная статистика
-        { id: 'section1', label: 'Основная статистика', value: '', section: 'header' },
-        { id: 'totalGames', label: 'Всего игр', value: gameData.stats.totalGames.toString(), section: 'main' },
-        { id: 'highScore', label: 'Лучший рекорд', value: gameData.highScore.toString(), section: 'main' },
-        { id: 'totalScore', label: 'Всего очков', value: gameData.stats.totalScore.toString(), section: 'main' },
-        { id: 'totalCoins', label: 'Всего монет', value: gameData.stats.totalCoinsEarned.toString(), section: 'main' },
-        { id: 'totalTime', label: 'Время в игре', value: formatTime(gameData.stats.totalPlayTime), section: 'main' },
-        { id: 'totalTaps', label: 'Всего тапов', value: gameData.stats.totalTaps.toString(), section: 'main' },
+    const handleToggleChange = (setting: keyof typeof audioSettings, value: boolean) => {
+        updateAudioSettings({ [setting]: value });
+        try {
+            playSound('button_click');
+            vibrate('light');
+        } catch (error) {
+            console.error('Error in handleToggleChange:', error);
+        }
+    };
 
-        // Статистика смертей
-        { id: 'section2', label: 'Причины смертей', value: '', section: 'header' },
-        { id: 'totalDeaths', label: 'Всего смертей', value: gameData.stats.totalDeaths.toString(), section: 'deaths' },
-        { id: 'cometDeaths', label: '💥 Кометы', value: `${gameData.stats.deathsByObstacle.comet} (${getDeathPercentage(gameData.stats.deathsByObstacle.comet)})`, section: 'deaths' },
-        { id: 'asteroidDeaths', label: '🪨 Астероиды', value: `${gameData.stats.deathsByObstacle.asteroid} (${getDeathPercentage(gameData.stats.deathsByObstacle.asteroid)})`, section: 'deaths' },
-        { id: 'droneDeaths', label: '🤖 Дроны', value: `${gameData.stats.deathsByObstacle.drone} (${getDeathPercentage(gameData.stats.deathsByObstacle.drone)})`, section: 'deaths' },
-        { id: 'wallDeaths', label: '🧱 Стены', value: `${gameData.stats.deathsByObstacle.wall} (${getDeathPercentage(gameData.stats.deathsByObstacle.wall)})`, section: 'deaths' },
+    // Данные для вкладки статистики
+    const statsData: SettingsItem[] = [
+        { id: 'section1', type: 'header', label: 'Основная статистика' },
+        { id: 'totalGames', type: 'stat', label: 'Всего игр', value: stats.totalGames.toString() },
+        { id: 'highScore', type: 'stat', label: 'Лучший рекорд', value: safeGameData.highScore.toString() },
+        { id: 'totalScore', type: 'stat', label: 'Всего очков', value: stats.totalScore.toString() },
+        { id: 'totalCoins', type: 'stat', label: 'Всего монет', value: stats.totalCoinsEarned.toString() },
+        { id: 'totalTime', type: 'stat', label: 'Время в игре', value: formatTime(stats.totalPlayTime) },
+        { id: 'totalTaps', type: 'stat', label: 'Всего тапов', value: stats.totalTaps.toString() },
 
-        // Статистика бонусов
-        { id: 'section3', label: 'Собранные бонусы', value: '', section: 'header' },
-        { id: 'totalBonuses', label: 'Всего бонусов', value: gameData.stats.totalBonuses.toString(), section: 'bonuses' },
-        { id: 'shieldBonuses', label: '🛡️ Щиты', value: gameData.stats.bonusesByType.shield.toString(), section: 'bonuses' },
-        { id: 'magnetBonuses', label: '🧲 Магниты', value: gameData.stats.bonusesByType.magnet.toString(), section: 'bonuses' },
-        { id: 'slowmoBonuses', label: '⏱️ Замедление', value: gameData.stats.bonusesByType.slowmo.toString(), section: 'bonuses' },
-        { id: 'coinBonuses', label: '💰 Монеты', value: gameData.stats.bonusesByType.coin.toString(), section: 'bonuses' },
+        { id: 'section2', type: 'header', label: 'Причины смертей' },
+        { id: 'totalDeaths', type: 'stat', label: 'Всего смертей', value: stats.totalDeaths.toString() },
+        { id: 'cometDeaths', type: 'stat', label: '💥 Кометы', value: `${stats.deathsByObstacle.comet} (${getDeathPercentage(stats.deathsByObstacle.comet)})` },
+        { id: 'asteroidDeaths', type: 'stat', label: '🪨 Астероиды', value: `${stats.deathsByObstacle.asteroid} (${getDeathPercentage(stats.deathsByObstacle.asteroid)})` },
+        { id: 'droneDeaths', type: 'stat', label: '🤖 Дроны', value: `${stats.deathsByObstacle.drone} (${getDeathPercentage(stats.deathsByObstacle.drone)})` },
+        { id: 'wallDeaths', type: 'stat', label: '🧱 Стены', value: `${stats.deathsByObstacle.wall} (${getDeathPercentage(stats.deathsByObstacle.wall)})` },
 
-        // Средние показатели
-        { id: 'section4', label: 'Средние показатели', value: '', section: 'header' },
-        { id: 'avgScore', label: 'Средний счет', value: gameData.stats.totalGames > 0 ? Math.round(gameData.stats.totalScore / gameData.stats.totalGames).toString() : '0', section: 'average' },
-        { id: 'avgTime', label: 'Среднее время', value: gameData.stats.totalGames > 0 ? formatTime(gameData.stats.totalPlayTime / gameData.stats.totalGames) : '0с', section: 'average' },
-        { id: 'avgTaps', label: 'Тапов/игру', value: gameData.stats.totalGames > 0 ? Math.round(gameData.stats.totalTaps / gameData.stats.totalGames).toString() : '0', section: 'average' },
+        { id: 'section3', type: 'header', label: 'Собранные бонусы' },
+        { id: 'totalBonuses', type: 'stat', label: 'Всего бонусов', value: stats.totalBonuses.toString() },
+        { id: 'shieldBonuses', type: 'stat', label: '🛡️ Щиты', value: stats.bonusesByType.shield.toString() },
+        { id: 'magnetBonuses', type: 'stat', label: '🧲 Магниты', value: stats.bonusesByType.magnet.toString() },
+        { id: 'slowmoBonuses', type: 'stat', label: '⏱️ Замедление', value: stats.bonusesByType.slowmo.toString() },
+        { id: 'coinBonuses', type: 'stat', label: '💰 Монеты', value: stats.bonusesByType.coin.toString() },
+
+        { id: 'section4', type: 'header', label: 'Средние показатели' },
+        { id: 'avgScore', type: 'stat', label: 'Средний счет', value: stats.totalGames > 0 ? Math.round(stats.totalScore / stats.totalGames).toString() : '0' },
+        { id: 'avgTime', type: 'stat', label: 'Среднее время', value: stats.totalGames > 0 ? formatTime(stats.totalPlayTime / stats.totalGames) : '0с' },
+        { id: 'avgTaps', type: 'stat', label: 'Тапов/игру', value: stats.totalGames > 0 ? Math.round(stats.totalTaps / stats.totalGames).toString() : '0' },
     ];
 
-    const renderStatItem = ({ item }: { item: StatItem }) => {
-        if (item.section === 'header') {
+    // Данные для вкладки аудио
+    const audioData: SettingsItem[] = [
+        { id: 'sectionAudio', type: 'header', label: 'Настройки звука' },
+        { id: 'sound', type: 'toggle', label: '🔊 Звуки эффектов' },
+        { id: 'music', type: 'toggle', label: '🎵 Фоновая музыка' },
+        { id: 'vibration', type: 'toggle', label: '📳 Вибрация' },
+    ];
+
+    const currentData = activeTab === 'stats' ? statsData : audioData;
+
+    const renderItem = ({ item }: { item: SettingsItem }) => {
+        if (item.type === 'header') {
             return (
                 <View style={settingsModalStyles.sectionHeader}>
                     <CustomText style={settingsModalStyles.sectionTitle}>
@@ -88,12 +128,71 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }) => {
             );
         }
 
-        return (
-            <View style={settingsModalStyles.statsRow}>
-                <CustomText style={settingsModalStyles.statLabel}>{item.label}</CustomText>
-                <CustomText style={settingsModalStyles.statValue}>{item.value}</CustomText>
-            </View>
-        );
+        if (item.type === 'toggle') {
+            return (
+                <ToggleSwitch
+                    value={audioSettings[item.id as keyof typeof audioSettings] as boolean}
+                    onValueChange={(value) => handleToggleChange(item.id as keyof typeof audioSettings, value)}
+                    label={item.label}
+                />
+            );
+        }
+
+        if (item.type === 'stat') {
+            return (
+                <View style={settingsModalStyles.statsRow}>
+                    <CustomText style={settingsModalStyles.statLabel}>{item.label}</CustomText>
+                    <CustomText style={settingsModalStyles.statValue}>{item.value}</CustomText>
+                </View>
+            );
+        }
+
+        return null;
+    };
+
+    // Функции для получения стилей кнопок табов
+    const getStatsTabButtonStyle = () => {
+        return activeTab === 'stats'
+            ? settingsModalStyles.tabButtonActive
+            : settingsModalStyles.tabButton;
+    };
+
+    const getAudioTabButtonStyle = () => {
+        return activeTab === 'audio'
+            ? settingsModalStyles.tabButtonActive
+            : settingsModalStyles.tabButton;
+    };
+
+    const getStatsTabTextStyle = () => {
+        return activeTab === 'stats'
+            ? settingsModalStyles.tabButtonTextActive
+            : settingsModalStyles.tabButtonText;
+    };
+
+    const getAudioTabTextStyle = () => {
+        return activeTab === 'audio'
+            ? settingsModalStyles.tabButtonTextActive
+            : settingsModalStyles.tabButtonText;
+    };
+
+    const handleTabPress = (tab: 'stats' | 'audio') => {
+        setActiveTab(tab);
+        try {
+            playSound('button_click');
+            vibrate('light');
+        } catch (error) {
+            console.error('Error in handleTabPress:', error);
+        }
+    };
+
+    const handleClose = () => {
+        try {
+            playSound('button_click');
+            vibrate('light');
+        } catch (error) {
+            console.error('Error in handleClose:', error);
+        }
+        onClose();
     };
 
     return (
@@ -105,11 +204,29 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }) => {
         >
             <View style={settingsModalStyles.modalOverlay}>
                 <View style={settingsModalStyles.modalContent}>
-                    <CustomText style={settingsModalStyles.title}>Статистика</CustomText>
+                    <CustomText style={settingsModalStyles.title}>
+                        {activeTab === 'stats' ? 'Статистика' : 'Настройки'}
+                    </CustomText>
+
+                    {/* Табы */}
+                    <View style={settingsModalStyles.tabsContainer}>
+                        <CustomButton
+                            title="Статистика"
+                            onPress={() => handleTabPress('stats')}
+                            buttonStyle={getStatsTabButtonStyle()}
+                            textStyle={getStatsTabTextStyle()}
+                        />
+                        <CustomButton
+                            title="Аудио"
+                            onPress={() => handleTabPress('audio')}
+                            buttonStyle={getAudioTabButtonStyle()}
+                            textStyle={getAudioTabTextStyle()}
+                        />
+                    </View>
 
                     <FlatList
-                        data={statsData}
-                        renderItem={renderStatItem}
+                        data={currentData}
+                        renderItem={renderItem}
                         keyExtractor={(item) => item.id}
                         style={settingsModalStyles.list}
                         showsVerticalScrollIndicator={true}
@@ -117,7 +234,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }) => {
 
                     <CustomButton
                         title="Закрыть"
-                        onPress={onClose}
+                        onPress={handleClose}
                         buttonStyle={settingsModalStyles.closeButton}
                         textStyle={settingsModalStyles.closeButtonText}
                     />

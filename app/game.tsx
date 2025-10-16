@@ -1,4 +1,5 @@
 // app/game.tsx
+import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { TouchableWithoutFeedback, View } from 'react-native';
 
@@ -21,7 +22,23 @@ const GameScreen = () => {
     const [gamePhase, setGamePhase] = useState<'idle' | 'countdown' | 'playing' | 'gameOver'>('idle');
 
     const gameEngineRef = useRef<SpaceGameEngine | null>(null);
-    const { recordGameSession, updateHighScore, addCoins, gameData } = useGame();
+    const { recordGameSession, updateHighScore, addCoins, gameData, playSound, switchToGameMusic, switchToMenuMusic, vibrate } = useGame();
+
+    // Безопасное получение highScore
+    const currentHighScore = gameData?.highScore || 0;
+
+    // Переключаем музыку при входе/выходе с экрана
+    useFocusEffect(
+        React.useCallback(() => {
+            // При входе на экран игры включаем игровую музыку
+            switchToGameMusic();
+
+            return () => {
+                // При выходе с экрана игры включаем музыку меню
+                switchToMenuMusic();
+            };
+        }, [switchToGameMusic, switchToMenuMusic])
+    );
 
     const handleGameOver = useCallback((score: number, coins: number) => {
         console.log('GAME SCREEN: Game Over received - Score:', score, 'Coins:', coins);
@@ -32,6 +49,10 @@ const GameScreen = () => {
         setShowGameOver(true);
         setGamePhase('gameOver');
 
+        // Звук окончания игры
+        playSound('game_over');
+        vibrate('heavy');
+
         // Сохраняем статистику и обновляем рекорд
         if (gameEngineRef.current) {
             const sessionData = gameEngineRef.current.getSessionData();
@@ -40,8 +61,8 @@ const GameScreen = () => {
             recordGameSession(sessionData);
 
             // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Всегда обновляем рекорд
-            if (score > gameData.highScore) {
-                console.log('New high score!', score, '>', gameData.highScore);
+            if (score > currentHighScore) {
+                console.log('New high score!', score, '>', currentHighScore);
                 updateHighScore(score);
             }
 
@@ -49,15 +70,28 @@ const GameScreen = () => {
                 addCoins(coins);
             }
         }
-    }, [recordGameSession, updateHighScore, addCoins, gameData.highScore]);
+    }, [recordGameSession, updateHighScore, addCoins, currentHighScore, playSound, vibrate]);
 
     const handleScoreUpdate = useCallback((score: number, coins: number) => {
         setGameState(prev => prev ? ({ ...prev, score, coins }) : null);
     }, []);
 
+    const handleSoundPlay = useCallback((soundName: string) => {
+        playSound(soundName);
+    }, [playSound]);
+
+    const handleVibrate = useCallback((type: 'light' | 'medium' | 'heavy' | 'success' | 'warning') => {
+        vibrate(type);
+    }, [vibrate]);
+
     // Инициализация игрового движка
     useEffect(() => {
-        const newGameEngine = new SpaceGameEngine(handleGameOver, handleScoreUpdate);
+        const newGameEngine = new SpaceGameEngine(
+            handleGameOver,
+            handleScoreUpdate,
+            handleSoundPlay,
+            handleVibrate
+        );
         gameEngineRef.current = newGameEngine;
         setGameEngine(newGameEngine);
         setGameState(newGameEngine.getInitialState());
@@ -66,7 +100,7 @@ const GameScreen = () => {
         return () => {
             gameEngineRef.current = null;
         };
-    }, [handleGameOver, handleScoreUpdate]);
+    }, [handleGameOver, handleScoreUpdate, handleSoundPlay, handleVibrate]);
 
     const updateGame = useCallback((deltaTime: number) => {
         if (gameEngineRef.current && isRunning && gamePhase === 'playing') {
@@ -114,9 +148,10 @@ const GameScreen = () => {
 
         if (gamePhase === 'idle') {
             // Первый тап - начинаем обратный отсчет
+            vibrate('medium'); // Вибрация при начале игры
             startNewGame();
         } else if (gamePhase === 'playing' && gameEngineRef.current) {
-            // Во время игры - прыжок
+            // Во время игры - прыжок (звук прыжка воспроизводится внутри gameEngine)
             gameEngineRef.current.jump();
         }
     };
@@ -128,15 +163,20 @@ const GameScreen = () => {
         if (gamePhase === 'countdown' && countdown > 0) {
             timer = setTimeout(() => {
                 setCountdown(countdown - 1);
+                // Вибрация при отсчете
+                if (countdown > 1) {
+                    vibrate('light');
+                }
             }, 1000);
         } else if (gamePhase === 'countdown' && countdown === 0) {
+            vibrate('medium'); // Вибрация при старте
             handleGameStart();
         }
 
         return () => {
             if (timer) clearTimeout(timer);
         };
-    }, [countdown, gamePhase]);
+    }, [countdown, gamePhase, vibrate]);
 
     if (!gameState) {
         return (
@@ -160,6 +200,16 @@ const GameScreen = () => {
                         Щит активен!
                     </CustomText>
                 )}
+                {gameState.activeBonuses.magnet && (
+                    <CustomText style={{ position: 'absolute', top: 130, left: 20, color: 'yellow' }}>
+                        Магнит активен!
+                    </CustomText>
+                )}
+                {gameState.activeBonuses.slowmo && (
+                    <CustomText style={{ position: 'absolute', top: 160, left: 20, color: 'purple' }}>
+                        Замедление!
+                    </CustomText>
+                )}
 
                 {/* Экран начала игры */}
                 {gamePhase === 'idle' && (
@@ -180,7 +230,7 @@ const GameScreen = () => {
                             Ваш счет: {finalScore}
                         </CustomText>
                         <CustomText style={gameStyles.highScoreText}>
-                            Рекорд: {gameData.highScore}
+                            Рекорд: {currentHighScore}
                         </CustomText>
                         <TouchableWithoutFeedback onPress={restartGame}>
                             <View style={gameStyles.restartButtonContainer}>

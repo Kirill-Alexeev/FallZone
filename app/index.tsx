@@ -1,7 +1,7 @@
 // app/index.tsx
 import { LinearGradient } from 'expo-linear-gradient';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
+import React, { useEffect } from 'react';
 import { View } from 'react-native';
 import SettingsSvg from '../assets/sprites/ui/settings.svg';
 import SettingsModal from '../components/SettingsModal';
@@ -11,17 +11,50 @@ import CustomButton from '../components/ui/CustomButton';
 import CustomText from '../components/ui/CustomText';
 import StarsAnimation from '../components/ui/StarsAnimation';
 import StatsDisplay from '../components/ui/StatsDisplay';
+import { useGame } from '../context/GameContext';
 import { homeScreenStyles } from './index.styles';
 
 const HomeScreen = () => {
     const router = useRouter();
-    const [settingsVisible, setSettingsVisible] = useState(false);
+    const [settingsVisible, setSettingsVisible] = React.useState(false);
+    const { playSound, switchToMenuMusic, vibrate } = useGame();
+
+    // Включаем музыку меню при загрузке
+    useEffect(() => {
+        try {
+            switchToMenuMusic();
+        } catch (error) {
+            console.error('Error playing menu music:', error);
+        }
+    }, [switchToMenuMusic]);
 
     const openSettings = () => {
+        try {
+            playSound('button_click');
+            vibrate('light');
+        } catch (error) {
+            console.error('Error in openSettings:', error);
+        }
         setSettingsVisible(true);
     };
 
-    const closeSettings = () => {
+    const startGame = () => {
+        try {
+            playSound('button_click');
+            vibrate('medium');
+        } catch (error) {
+            console.error('Error in startGame:', error);
+        }
+        router.push('/game');
+    };
+
+    const handleCloseSettings = () => {
+        try {
+            playSound('button_click');
+            vibrate('light');
+        } catch (error) {
+            console.error('Error in handleCloseSettings:', error);
+        }
         setSettingsVisible(false);
     };
 
@@ -45,7 +78,7 @@ const HomeScreen = () => {
                 <CharacterPreview />
                 <CustomButton
                     title="Полетели!"
-                    onPress={() => router.push('/game')}
+                    onPress={startGame}
                 />
             </View>
             <StatsDisplay />
@@ -53,7 +86,7 @@ const HomeScreen = () => {
             {/* Модальное окно статистики */}
             <SettingsModal
                 visible={settingsVisible}
-                onClose={closeSettings}
+                onClose={handleCloseSettings}
             />
         </LinearGradient>
     );

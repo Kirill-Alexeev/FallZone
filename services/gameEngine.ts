@@ -59,6 +59,8 @@ class SpaceGameEngine {
     private state: GameState;
     private onGameOver: (score: number, coins: number) => void;
     private onScoreUpdate: (score: number, coins: number) => void;
+    private onSoundPlay?: (soundName: string) => void;
+    private onVibrate?: (type: 'light' | 'medium' | 'heavy' | 'success' | 'warning') => void;
 
     // Таймеры
     private obstacleSpawnTimer: number = 0;
@@ -94,9 +96,16 @@ class SpaceGameEngine {
     // Флаг для предотвращения повторных вызовов game over
     private gameOverCalled: boolean = false;
 
-    constructor(onGameOver: (score: number, coins: number) => void, onScoreUpdate: (score: number, coins: number) => void) {
+    constructor(
+        onGameOver: (score: number, coins: number) => void,
+        onScoreUpdate: (score: number, coins: number) => void,
+        onSoundPlay?: (soundName: string) => void,
+        onVibrate?: (type: 'light' | 'medium' | 'heavy' | 'success' | 'warning') => void
+    ) {
         this.onGameOver = onGameOver;
         this.onScoreUpdate = onScoreUpdate;
+        this.onSoundPlay = onSoundPlay;
+        this.onVibrate = onVibrate;
         this.state = this.getInitialState();
     }
 
@@ -149,6 +158,7 @@ class SpaceGameEngine {
         if (!this.state.gameOver && this.state.gameStarted) {
             this.state.player.velocityY = this.JUMP_STRENGTH;
             this.tapCount++;
+            this.onSoundPlay?.('jump');
         }
     }
 
@@ -376,6 +386,8 @@ class SpaceGameEngine {
             if (this.checkCollision(player, obstacle)) {
                 if (!this.state.activeBonuses.shield) {
                     this.lastObstacleCollision = obstacle.type;
+                    this.onSoundPlay?.('obstacle_hit');
+                    this.onVibrate?.('heavy');
                     this.endGame();
                     return;
                 } else {
@@ -435,6 +447,15 @@ class SpaceGameEngine {
         const bonusType = this.collectedBonuses.find(b => b.type === bonus.type);
         if (bonusType) {
             bonusType.count++;
+        }
+
+        // Звуки и вибрация
+        if (bonus.type === 'coin') {
+            this.onSoundPlay?.('coin_collect');
+            this.onVibrate?.('light');
+        } else {
+            this.onSoundPlay?.('bonus_collect');
+            this.onVibrate?.('medium');
         }
 
         switch (bonus.type) {

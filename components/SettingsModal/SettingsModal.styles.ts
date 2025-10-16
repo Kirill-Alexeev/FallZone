@@ -1,4 +1,4 @@
-// components/SettingsScreen/SettingsModal.styles.ts (для FlatList)
+// components/SettingsScreen/SettingsModal.styles.ts
 import { Dimensions, StyleSheet } from 'react-native';
 
 const { width, height } = Dimensions.get('window');
@@ -25,7 +25,40 @@ export const settingsModalStyles = StyleSheet.create({
         color: '#00FFFF',
         fontWeight: 'bold',
         textAlign: 'center',
-        marginBottom: 20,
+        marginBottom: 15,
+    },
+    tabsContainer: {
+        flexDirection: 'row',
+        marginBottom: 15,
+        backgroundColor: 'rgba(0, 255, 255, 0.1)',
+        borderRadius: 10,
+        padding: 5,
+    },
+    tabButton: {
+        flex: 1,
+        backgroundColor: 'transparent',
+        paddingVertical: 10,
+        borderRadius: 8,
+        marginHorizontal: 2,
+    },
+    tabButtonActive: {
+        flex: 1,
+        backgroundColor: '#00FFFF',
+        paddingVertical: 10,
+        borderRadius: 8,
+        marginHorizontal: 2,
+    },
+    tabButtonText: {
+        color: '#00FFFF',
+        fontSize: 16,
+        fontWeight: 'bold',
+        textAlign: 'center',
+    },
+    tabButtonTextActive: {
+        color: '#1a1a2e',
+        fontSize: 16,
+        fontWeight: 'bold',
+        textAlign: 'center',
     },
     list: {
         flex: 1,
@@ -33,7 +66,7 @@ export const settingsModalStyles = StyleSheet.create({
     },
     sectionHeader: {
         backgroundColor: 'rgba(0, 255, 255, 0.2)',
-        padding: 10,
+        padding: 12,
         borderRadius: 8,
         marginVertical: 5,
     },
@@ -47,7 +80,7 @@ export const settingsModalStyles = StyleSheet.create({
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'center',
-        paddingVertical: 8,
+        paddingVertical: 10,
         paddingHorizontal: 10,
         borderBottomWidth: 1,
         borderBottomColor: 'rgba(255, 255, 255, 0.1)',

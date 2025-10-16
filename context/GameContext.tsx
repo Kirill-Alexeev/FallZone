@@ -1,13 +1,14 @@
 // context/GameContext.tsx
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { DEFAULT_GAME_DATA, GameData, GameStats, loadGameData, saveGameData, Settings, Skin } from '../services/storage';
+import AudioService from '../services/audioService';
+import { AudioSettings, DEFAULT_GAME_DATA, GameData, GameStats, loadGameData, saveGameData, Skin } from '../services/storage';
 
 interface GameContextType {
-    gameData: GameData;
+    gameData: GameData | null;
     updateStats: (newStats: Partial<GameStats>) => void;
     addCoins: (amount: number) => void;
     updateHighScore: (score: number) => void;
-    updateSettings: (settings: Partial<Settings>) => void;
+    updateAudioSettings: (settings: Partial<AudioSettings>) => void;
     unlockSkin: (skinId: string) => void;
     equipSkin: (skinId: string) => void;
     getCurrentSkin: () => Skin | undefined;
@@ -20,37 +21,91 @@ interface GameContextType {
         bonusesCollected?: { type: 'shield' | 'magnet' | 'slowmo' | 'coin'; count: number }[];
     }) => void;
     refreshGameData: () => Promise<void>;
+    playSound: (soundName: string) => void;
+    playMusic: (musicType: 'menu' | 'game') => void;
+    stopMusic: () => void;
+    switchToMenuMusic: () => void;
+    switchToGameMusic: () => void;
+    vibrate: (type: 'light' | 'medium' | 'heavy' | 'success' | 'warning') => void;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
 
 export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-    const [gameData, setGameData] = useState<GameData>(DEFAULT_GAME_DATA);
+    const [gameData, setGameData] = useState<GameData | null>(null);
     const [isInitialized, setIsInitialized] = useState(false);
 
-    const refreshGameData = async () => {
-        const data = await loadGameData();
-        setGameData(data);
-        console.log('Game data refreshed:', data);
+    // Получаем безопасные настройки аудио
+    const getSafeAudioSettings = (): AudioSettings => {
+        return gameData?.audioSettings || DEFAULT_GAME_DATA.audioSettings;
     };
 
+    // Инициализация аудио сервиса
     useEffect(() => {
-        const initializeData = async () => {
-            const data = await loadGameData();
-            setGameData(data);
-            setIsInitialized(true);
-            console.log('GameContext initialized with data:', data);
+        const initializeAudio = async () => {
+            try {
+                await AudioService.loadSounds();
+                console.log('AudioService initialized successfully');
+            } catch (error) {
+                console.error('Error initializing AudioService:', error);
+            }
         };
+
+        initializeAudio();
+    }, []);
+
+    // Инициализация данных игры
+    useEffect(() => {
+        let isMounted = true;
+
+        const initializeData = async () => {
+            try {
+                console.log('Starting game data initialization...');
+                const data = await loadGameData();
+
+                if (isMounted) {
+                    setGameData(data);
+                    setIsInitialized(true);
+
+                    // Применяем настройки звука после загрузки данных
+                    const audioSettings = data.audioSettings;
+                    AudioService.setMuted(!audioSettings.sound);
+                    AudioService.setMusicMuted(!audioSettings.music);
+
+                    console.log('GameContext initialized successfully');
+                }
+            } catch (error) {
+                console.error('Error initializing game data:', error);
+                if (isMounted) {
+                    // В случае ошибки используем данные по умолчанию
+                    setGameData(DEFAULT_GAME_DATA);
+                    setIsInitialized(true);
+                }
+            }
+        };
+
         initializeData();
+
+        return () => {
+            isMounted = false;
+        };
     }, []);
 
     const saveData = async (newData: GameData) => {
+        if (!isInitialized) return;
+
         setGameData(newData);
-        await saveGameData(newData);
-        console.log('Game data saved:', newData);
+        try {
+            await saveGameData(newData);
+            console.log('Game data saved successfully');
+        } catch (error) {
+            console.error('Error saving game data:', error);
+        }
     };
 
     const updateStats = (newStats: Partial<GameStats>) => {
+        if (!gameData || !isInitialized) return;
+
         const updatedData = {
             ...gameData,
             stats: { ...gameData.stats, ...newStats }
@@ -59,6 +114,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const addCoins = (amount: number) => {
+        if (!gameData || !isInitialized) return;
+
         const updatedData = {
             ...gameData,
             coins: gameData.coins + amount,
@@ -71,6 +128,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const updateHighScore = (score: number) => {
+        if (!gameData || !isInitialized) return;
+
         console.log('Updating high score:', score, 'Current:', gameData.highScore);
         if (score > gameData.highScore) {
             const updatedData = {
@@ -84,15 +143,28 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     };
 
-    const updateSettings = (settings: Partial<Settings>) => {
+    const updateAudioSettings = (settings: Partial<AudioSettings>) => {
+        if (!gameData || !isInitialized) return;
+
         const updatedData = {
             ...gameData,
-            settings: { ...gameData.settings, ...settings }
+            audioSettings: { ...gameData.audioSettings, ...settings }
         };
+
+        // Применяем настройки к аудио сервису
+        if (settings.sound !== undefined) {
+            AudioService.setMuted(!settings.sound);
+        }
+        if (settings.music !== undefined) {
+            AudioService.setMusicMuted(!settings.music);
+        }
+
         saveData(updatedData);
     };
 
     const unlockSkin = (skinId: string) => {
+        if (!gameData || !isInitialized) return;
+
         const updatedSkins = gameData.skins.map(skin =>
             skin.id === skinId ? { ...skin, unlocked: true } : skin
         );
@@ -101,6 +173,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const equipSkin = (skinId: string) => {
+        if (!gameData || !isInitialized) return;
+
         const updatedSkins = gameData.skins.map(skin =>
             ({ ...skin, equipped: skin.id === skinId })
         );
@@ -113,6 +187,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const getCurrentSkin = () => {
+        if (!gameData || !isInitialized) return undefined;
         return gameData.skins.find(skin => skin.id === gameData.currentSkinId);
     };
 
@@ -124,6 +199,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         deathBy?: 'comet' | 'asteroid' | 'drone' | 'wall';
         bonusesCollected?: { type: 'shield' | 'magnet' | 'slowmo' | 'coin'; count: number }[];
     }) => {
+        if (!gameData || !isInitialized) return;
+
         console.log('Recording game session:', sessionData);
 
         const bonusesByType = { ...gameData.stats.bonusesByType };
@@ -155,7 +232,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
         };
 
-        // Обновляем рекорд если нужно
         if (sessionData.score > gameData.highScore) {
             updatedData.highScore = sessionData.score;
             console.log('New record in session data:', sessionData.score);
@@ -164,23 +240,119 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         saveData(updatedData);
     };
 
+    const refreshGameData = async () => {
+        try {
+            const data = await loadGameData();
+            if (isInitialized) {
+                setGameData(data);
+                console.log('Game data refreshed successfully');
+            }
+        } catch (error) {
+            console.error('Error refreshing game data:', error);
+        }
+    };
+
+    // Аудио методы с полной защитой
+    const playSound = (soundName: string) => {
+        if (!isInitialized) return;
+
+        const audioSettings = getSafeAudioSettings();
+        if (audioSettings.sound) {
+            try {
+                AudioService.playSound(soundName);
+            } catch (error) {
+                console.error(`Error playing sound ${soundName}:`, error);
+            }
+        }
+    };
+
+    const playMusic = (musicType: 'menu' | 'game') => {
+        if (!isInitialized) return;
+
+        const audioSettings = getSafeAudioSettings();
+        if (audioSettings.music) {
+            try {
+                AudioService.playBackgroundMusic(musicType);
+            } catch (error) {
+                console.error(`Error playing ${musicType} music:`, error);
+            }
+        }
+    };
+
+    const stopMusic = () => {
+        try {
+            AudioService.stopBackgroundMusic();
+        } catch (error) {
+            console.error('Error stopping music:', error);
+        }
+    };
+
+    // Новые методы для переключения музыки между экранами
+    const switchToMenuMusic = () => {
+        if (!isInitialized) return;
+
+        const audioSettings = getSafeAudioSettings();
+        if (audioSettings.music) {
+            try {
+                AudioService.playBackgroundMusic('menu');
+            } catch (error) {
+                console.error('Error switching to menu music:', error);
+            }
+        }
+    };
+
+    const switchToGameMusic = () => {
+        if (!isInitialized) return;
+
+        const audioSettings = getSafeAudioSettings();
+        if (audioSettings.music) {
+            try {
+                AudioService.playBackgroundMusic('game');
+            } catch (error) {
+                console.error('Error switching to game music:', error);
+            }
+        }
+    };
+
+    const vibrate = (type: 'light' | 'medium' | 'heavy' | 'success' | 'warning') => {
+        if (!isInitialized) return;
+
+        const audioSettings = getSafeAudioSettings();
+        if (audioSettings.vibration) {
+            try {
+                AudioService.vibrate(type);
+            } catch (error) {
+                console.error('Error with vibration:', error);
+            }
+        }
+    };
+
+    // Показываем loading пока данные не загружены
     if (!isInitialized) {
-        return null; // или loading indicator
+        return null;
     }
 
+    const contextValue: GameContextType = {
+        gameData: gameData || DEFAULT_GAME_DATA,
+        updateStats,
+        addCoins,
+        updateHighScore,
+        updateAudioSettings,
+        unlockSkin,
+        equipSkin,
+        getCurrentSkin,
+        recordGameSession,
+        refreshGameData,
+        playSound,
+        playMusic,
+        stopMusic,
+        switchToMenuMusic,
+        switchToGameMusic,
+        vibrate
+    };
+
     return (
-        <GameContext.Provider value={{
-            gameData,
-            updateStats,
-            addCoins,
-            updateHighScore,
-            updateSettings,
-            unlockSkin,
-            equipSkin,
-            getCurrentSkin,
-            recordGameSession,
-            refreshGameData
-        }}>
+        <GameContext.Provider value={contextValue}>
             {children}
         </GameContext.Provider>
     );
