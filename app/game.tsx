@@ -11,6 +11,7 @@ import CustomText from '../components/ui/CustomText';
 import { useGame } from '../context/GameContext';
 import { useNavigation } from '../context/NavigationContext';
 import useGameLoop from '../hooks/useGameLoop';
+import AudioService from '../services/audioService';
 import SpaceGameEngine, { GameState } from '../services/gameEngine';
 import { gameStyles } from './game.styles';
 
@@ -44,6 +45,16 @@ const GameScreen = () => {
             };
         }, [switchToGameMusic, switchToMenuMusic, showTabBar])
     );
+
+    // Дополнительная проверка настроек музыки при изменении настроек
+    useEffect(() => {
+        if (gameData?.audioSettings) {
+            if (!gameData.audioSettings.music) {
+                // Если музыка отключена, останавливаем её
+                AudioService.stopBackgroundMusic();
+            }
+        }
+    }, [gameData?.audioSettings?.music]);
 
     // Управляем видимостью нижней панели в зависимости от фазы игры
     useEffect(() => {

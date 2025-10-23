@@ -12,12 +12,13 @@ import CustomText from '../components/ui/CustomText';
 import StarsAnimation from '../components/ui/StarsAnimation';
 import StatsDisplay from '../components/ui/StatsDisplay';
 import { useGame } from '../context/GameContext';
+import AudioService from '../services/audioService';
 import { homeScreenStyles } from './index.styles';
 
 const HomeScreen = () => {
     const router = useRouter();
     const [settingsVisible, setSettingsVisible] = React.useState(false);
-    const { playSound, switchToMenuMusic, vibrate } = useGame();
+    const { playSound, switchToMenuMusic, vibrate, gameData } = useGame();
 
     // Включаем музыку меню при загрузке
     useEffect(() => {
@@ -27,6 +28,16 @@ const HomeScreen = () => {
             console.error('Error playing menu music:', error);
         }
     }, [switchToMenuMusic]);
+
+    // Дополнительная проверка настроек музыки при изменении настроек
+    useEffect(() => {
+        if (gameData?.audioSettings) {
+            if (!gameData.audioSettings.music) {
+                // Если музыка отключена, останавливаем её
+                AudioService.stopBackgroundMusic();
+            }
+        }
+    }, [gameData?.audioSettings?.music]);
 
     const openSettings = () => {
         try {

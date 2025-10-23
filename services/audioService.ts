@@ -56,10 +56,14 @@ class AudioService {
 
     // Фоновая музыка
     async playBackgroundMusic(musicType: 'menu' | 'game') {
-        if (this.isMusicMuted) return;
+        if (this.isMusicMuted) {
+            console.log('Music is muted, not playing background music');
+            return;
+        }
 
         // Если уже играет нужная музыка, ничего не делаем
         if (this.currentMusicType === musicType && this.backgroundMusic) {
+            console.log(`Music ${musicType} is already playing`);
             return;
         }
 
@@ -141,11 +145,14 @@ class AudioService {
     }
 
     setMusicMuted(muted: boolean) {
+        console.log(`Setting music muted to: ${muted}`);
         this.isMusicMuted = muted;
         if (muted) {
+            console.log('Music muted, stopping background music');
             this.stopBackgroundMusic();
         } else if (this.currentMusicType) {
             // Если звук был включен и у нас есть текущий тип музыки, перезапускаем
+            console.log(`Music unmuted, restarting ${this.currentMusicType} music`);
             this.playBackgroundMusic(this.currentMusicType);
         }
     }
