@@ -9,6 +9,7 @@ import Player from '../components/Player';
 import BackgroundWithStars from '../components/ui/BackgroundWithStars';
 import CustomText from '../components/ui/CustomText';
 import { useGame } from '../context/GameContext';
+import { useNavigation } from '../context/NavigationContext';
 import useGameLoop from '../hooks/useGameLoop';
 import SpaceGameEngine, { GameState } from '../services/gameEngine';
 import { gameStyles } from './game.styles';
@@ -24,6 +25,7 @@ const GameScreen = () => {
 
     const gameEngineRef = useRef<SpaceGameEngine | null>(null);
     const { recordGameSession, updateHighScore, addCoins, gameData, playSound, switchToGameMusic, switchToMenuMusic, vibrate } = useGame();
+    const { hideTabBar, showTabBar } = useNavigation();
 
     // Безопасное получение highScore
     const currentHighScore = gameData?.highScore || 0;
@@ -37,9 +39,22 @@ const GameScreen = () => {
             return () => {
                 // При выходе с экрана игры включаем музыку меню
                 switchToMenuMusic();
+                // Показываем панель при выходе с экрана игры
+                showTabBar();
             };
-        }, [switchToGameMusic, switchToMenuMusic])
+        }, [switchToGameMusic, switchToMenuMusic, showTabBar])
     );
+
+    // Управляем видимостью нижней панели в зависимости от фазы игры
+    useEffect(() => {
+        if (gamePhase === 'playing') {
+            // Скрываем панель во время игры
+            hideTabBar();
+        } else if (gamePhase === 'gameOver') {
+            // Показываем панель когда игра окончена
+            showTabBar();
+        }
+    }, [gamePhase, hideTabBar, showTabBar]);
 
     const handleGameOver = useCallback((score: number, coins: number) => {
         console.log('GAME SCREEN: Game Over received - Score:', score, 'Coins:', coins);
