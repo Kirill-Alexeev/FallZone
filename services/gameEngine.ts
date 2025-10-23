@@ -20,6 +20,7 @@ export interface ObstacleState {
     trajectory?: { x: number; y: number }[];
     speed?: number;
     trajectoryIndex?: number;
+    outOfBoundsTime?: number; // Время когда препятствие вышло за границы
 }
 
 export interface BonusState {
@@ -84,7 +85,7 @@ class SpaceGameEngine {
     private readonly screenHeight: number = 800;
     private readonly GRAVITY = 0.4;
     private readonly JUMP_STRENGTH = -10;
-    private readonly BASE_SPEED = 3;
+    private readonly BASE_SPEED = 2; // Уменьшили базовую скорость с 3 до 2
     private readonly PLAYER_SIZE = 40;
 
     private readonly BONUS_DURATION = {
@@ -92,6 +93,8 @@ class SpaceGameEngine {
         magnet: 5000,
         slowmo: 2000
     };
+
+    private readonly OBSTACLE_REMOVAL_DELAY = 3000; // 3 секунды задержки перед удалением
 
     // Флаг для предотвращения повторных вызовов game over
     private gameOverCalled: boolean = false;
@@ -207,7 +210,10 @@ class SpaceGameEngine {
     private updateObstacles(deltaTime: number) {
         const speed = this.BASE_SPEED * this.state.gameSpeed * (this.state.activeBonuses.slowmo ? 0.5 : 1);
 
-        this.state.obstacles.forEach(obstacle => {
+        // Оптимизированное обновление препятствий
+        for (let i = this.state.obstacles.length - 1; i >= 0; i--) {
+            const obstacle = this.state.obstacles[i];
+            
             switch (obstacle.type) {
                 case 'comet':
                     obstacle.y += speed * 1.5;
@@ -236,15 +242,22 @@ class SpaceGameEngine {
                     break;
             }
 
-            // Удаление вышедших за экран
-            if (obstacle.x + obstacle.width < 0 || obstacle.y > this.screenHeight) {
-                obstacle.passed = true;
+            // Проверяем, вышел ли объект за границы экрана
+            const isOutOfBounds = obstacle.x + obstacle.width < 0 || obstacle.y > this.screenHeight;
+            
+            if (isOutOfBounds && !obstacle.outOfBoundsTime) {
+                // Запоминаем время когда объект вышел за границы
+                obstacle.outOfBoundsTime = Date.now();
+            } else if (!isOutOfBounds && obstacle.outOfBoundsTime) {
+                // Если объект вернулся в границы, сбрасываем время
+                obstacle.outOfBoundsTime = undefined;
             }
-        });
 
-        this.state.obstacles = this.state.obstacles.filter(obstacle =>
-            !obstacle.passed && obstacle.x + obstacle.width > 0
-        );
+            // Удаляем объект только если он был за границами более 3 секунд
+            if (obstacle.outOfBoundsTime && Date.now() - obstacle.outOfBoundsTime > this.OBSTACLE_REMOVAL_DELAY) {
+                this.state.obstacles.splice(i, 1);
+            }
+        }
     }
 
     private updateBonuses(deltaTime: number) {
@@ -278,8 +291,11 @@ class SpaceGameEngine {
         this.obstacleSpawnTimer += deltaTime;
         this.bonusSpawnTimer += deltaTime;
 
-        const obstacleSpawnRate = Math.max(1500, 2500 - this.state.score * 10);
-        if (this.obstacleSpawnTimer > obstacleSpawnRate) {
+        // Увеличиваем частоту спавна препятствий и ограничиваем их количество
+        const obstacleSpawnRate = Math.max(800, 1500 - this.state.score * 8); // Быстрее спавн
+        const maxObstaclesOnScreen = 8; // Максимум 8 препятствий на экране
+        
+        if (this.obstacleSpawnTimer > obstacleSpawnRate && this.state.obstacles.length < maxObstaclesOnScreen) {
             this.spawnRandomObstacle();
             this.obstacleSpawnTimer = 0;
         }
@@ -292,7 +308,7 @@ class SpaceGameEngine {
 
     private spawnRandomObstacle() {
         const types: ObstacleState['type'][] = ['comet', 'asteroid', 'drone', 'wall'];
-        const weights = [0.2, 0.3, 0.2, 0.3];
+        const weights = [0.25, 0.35, 0.2, 0.2]; // Увеличили вероятность астероидов и комет
         const random = Math.random();
         let type: ObstacleState['type'] = 'asteroid';
 
@@ -507,7 +523,8 @@ class SpaceGameEngine {
     }
 
     private increaseDifficulty() {
-        this.state.gameSpeed = 1.0 + Math.floor(this.state.score / 10) * 0.1;
+        // Более плавное увеличение сложности
+        this.state.gameSpeed = 1.0 + Math.floor(this.state.score / 15) * 0.05;
     }
 
     private endGame() {
