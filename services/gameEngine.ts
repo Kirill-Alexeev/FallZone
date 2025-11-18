@@ -213,11 +213,11 @@ class SpaceGameEngine {
         // Оптимизированное обновление препятствий
         for (let i = this.state.obstacles.length - 1; i >= 0; i--) {
             const obstacle = this.state.obstacles[i];
-            
+
             switch (obstacle.type) {
                 case 'comet':
-                    obstacle.y += speed * 1.5;
-                    obstacle.x -= speed * 0.5;
+                    obstacle.y += speed * 1.2; // Уменьшенная скорость
+                    obstacle.x -= speed * 0.3; // Уменьшенное горизонтальное движение
                     break;
                 case 'asteroid':
                     obstacle.x -= speed;
@@ -242,19 +242,35 @@ class SpaceGameEngine {
                     break;
             }
 
-            // Проверяем, вышел ли объект за границы экрана
-            const isOutOfBounds = obstacle.x + obstacle.width < 0 || obstacle.y > this.screenHeight;
-            
-            if (isOutOfBounds && !obstacle.outOfBoundsTime) {
-                // Запоминаем время когда объект вышел за границы
-                obstacle.outOfBoundsTime = Date.now();
-            } else if (!isOutOfBounds && obstacle.outOfBoundsTime) {
-                // Если объект вернулся в границы, сбрасываем время
-                obstacle.outOfBoundsTime = undefined;
+            // РАЗДЕЛЬНАЯ ПРОВЕРКА ДЛЯ КАЖДОГО ТИПА ПРЕПЯТСТВИЙ
+            let isOutOfBounds = false;
+
+            switch (obstacle.type) {
+                case 'comet':
+                    // Комету удаляем если ушла за нижнюю границу
+                    isOutOfBounds = obstacle.y > this.screenHeight + 100;
+                    break;
+                case 'asteroid':
+                    // Астероид удаляем если ушел за левую границу
+                    isOutOfBounds = obstacle.x + obstacle.width < -50;
+                    break;
+                case 'drone':
+                    // Дрона удаляем если прошел достаточно далеко за левую границу
+                    // ИЛИ если он завершил свою траекторию и ушел за границы
+                    const hasCompletedTrajectory = obstacle.trajectory &&
+                        obstacle.trajectoryIndex !== undefined &&
+                        obstacle.trajectoryIndex === obstacle.trajectory.length - 1 &&
+                        obstacle.x < -100;
+
+                    isOutOfBounds = obstacle.x + obstacle.width < -100 || hasCompletedTrajectory!;
+                    break;
+                case 'wall':
+                    // Стену удаляем если ушла за левую границу
+                    isOutOfBounds = obstacle.x + obstacle.width < -50;
+                    break;
             }
 
-            // Удаляем объект только если он был за границами более 3 секунд
-            if (obstacle.outOfBoundsTime && Date.now() - obstacle.outOfBoundsTime > this.OBSTACLE_REMOVAL_DELAY) {
+            if (isOutOfBounds) {
                 this.state.obstacles.splice(i, 1);
             }
         }
@@ -292,9 +308,9 @@ class SpaceGameEngine {
         this.bonusSpawnTimer += deltaTime;
 
         // Увеличиваем частоту спавна препятствий и ограничиваем их количество
-        const obstacleSpawnRate = Math.max(800, 1500 - this.state.score * 8); // Быстрее спавн
-        const maxObstaclesOnScreen = 8; // Максимум 8 препятствий на экране
-        
+        const obstacleSpawnRate = Math.max(1000, 1500 - this.state.score * 8); // Быстрее спавн
+        const maxObstaclesOnScreen = 4; // Максимум 8 препятствий на экране
+
         if (this.obstacleSpawnTimer > obstacleSpawnRate && this.state.obstacles.length < maxObstaclesOnScreen) {
             this.spawnRandomObstacle();
             this.obstacleSpawnTimer = 0;
@@ -308,7 +324,7 @@ class SpaceGameEngine {
 
     private spawnRandomObstacle() {
         const types: ObstacleState['type'][] = ['comet', 'asteroid', 'drone', 'wall'];
-        const weights = [0.25, 0.35, 0.2, 0.2]; // Увеличили вероятность астероидов и комет
+        const weights = [0.15, 0.4, 0.25, 0.2];
         const random = Math.random();
         let type: ObstacleState['type'] = 'asteroid';
 
@@ -342,6 +358,7 @@ class SpaceGameEngine {
                 break;
             case 'drone':
                 const startY = Math.random() * (this.screenHeight - 100) + 50;
+                // Упрощаем траекторию - только движение влево с небольшими отклонениями
                 obstacle = {
                     x: this.screenWidth,
                     y: startY,
@@ -350,9 +367,9 @@ class SpaceGameEngine {
                     type: 'drone',
                     id: Math.random().toString(),
                     trajectory: [
-                        { x: this.screenWidth - 150, y: startY },
-                        { x: this.screenWidth - 300, y: startY + 80 },
-                        { x: this.screenWidth - 450, y: startY - 60 },
+                        { x: this.screenWidth - 200, y: startY },
+                        { x: this.screenWidth - 400, y: startY + 60 },
+                        { x: this.screenWidth - 600, y: startY - 40 }, // Финальная точка за экраном
                     ],
                     trajectoryIndex: 0,
                 };
@@ -380,13 +397,51 @@ class SpaceGameEngine {
         this.state.obstacles.push(obstacle);
     }
 
+    private isPositionOccupied(x: number, y: number, size: number = 30): boolean {
+        // Проверяем пересечение с препятствиями
+        for (const obstacle of this.state.obstacles) {
+            const obstacleLeft = obstacle.x;
+            const obstacleRight = obstacle.x + (obstacle.width || 0);
+            const obstacleTop = obstacle.y;
+            const obstacleBottom = obstacle.y + (obstacle.height || 0);
+
+            const bonusLeft = x;
+            const bonusRight = x + size;
+            const bonusTop = y;
+            const bonusBottom = y + size;
+
+            if (bonusRight > obstacleLeft &&
+                bonusLeft < obstacleRight &&
+                bonusBottom > obstacleTop &&
+                bonusTop < obstacleBottom) {
+                return true; // Позиция занята препятствием
+            }
+        }
+        return false;
+    }
+
     private spawnRandomBonus() {
         const types: BonusState['type'][] = ['shield', 'magnet', 'slowmo', 'coin'];
         const type = types[Math.floor(Math.random() * types.length)];
 
+        let attempts = 0;
+        let x: number, y: number;
+
+        // Пытаемся найти свободную позицию (максимум 10 попыток)
+        do {
+            x = this.screenWidth;
+            y = Math.random() * (this.screenHeight - 50);
+            attempts++;
+        } while (this.isPositionOccupied(x, y, 30) && attempts < 10);
+
+        // Если не нашли свободную позицию после 10 попыток, не спавним бонус
+        if (attempts >= 10) {
+            return;
+        }
+
         const bonus: BonusState = {
-            x: this.screenWidth,
-            y: Math.random() * (this.screenHeight - 50),
+            x: x,
+            y: y,
             type,
             id: Math.random().toString(),
         };
