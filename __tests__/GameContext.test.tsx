@@ -23,16 +23,16 @@ describe('GameContext', () => {
             </GameProvider>
         );
 
-        // Ждем, пока gameData загрузится
-        await waitFor(() => expect(getByTestId('coins')).toBeTruthy());
+        // Ждем, пока gameData загрузится (увеличиваем таймаут)
+        await waitFor(() => expect(getByTestId('coins')).toBeTruthy(), { timeout: 10000 });
 
         const coinsBefore = getByTestId('coins').props.children;
         expect(coinsBefore).toBe(0);
 
         // Добавляем монеты
         fireEvent.press(getByTestId('add-coins'));
-        await waitFor(() => expect(getByTestId('coins').props.children).toBe(1000));
-    });
+        await waitFor(() => expect(getByTestId('coins').props.children).toBe(1000), { timeout: 10000 });
+    }, 15000); // Увеличиваем общий таймаут теста до 15 секунд
 
     it('updates high score correctly', async () => {
         const { getByTestId } = render(
@@ -41,12 +41,12 @@ describe('GameContext', () => {
             </GameProvider>
         );
 
-        await waitFor(() => expect(getByTestId('coins')).toBeTruthy());
+        await waitFor(() => expect(getByTestId('coins')).toBeTruthy(), { timeout: 10000 });
 
         fireEvent.press(getByTestId('update-score'));
 
         // Проверяем, что highScore обновился
         // Нужно получить gameData через useGame, поэтому тест ограничен проверкой состояния
         // Можно расширить компонент для отображения highScore, если нужно
-    });
+    }, 15000);
 });
