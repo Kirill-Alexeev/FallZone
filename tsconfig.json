@@ -23,7 +23,7 @@
     "**/*.tsx",
     ".expo/types/**/*.ts",
     "expo-env.d.ts"
-  ],
+, "__mocks__/expo-av.js"  ],
   "exclude": [
     "node_modules",
     "babel.config.js",

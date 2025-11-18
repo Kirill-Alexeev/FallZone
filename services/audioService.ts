@@ -2,11 +2,14 @@
 import { Audio } from 'expo-av';
 import * as Haptics from 'expo-haptics';
 
+import { Platform, Vibration } from 'react-native';
+
 class AudioService {
     private sounds: Map<string, Audio.Sound> = new Map();
     private backgroundMusic: Audio.Sound | null = null;
     private isMuted = false;
     private isMusicMuted = false;
+    private isVibrationEnabled = true;
     private currentMusicType: 'menu' | 'game' | null = null;
 
     // Загрузка всех звуков
@@ -114,28 +117,71 @@ class AudioService {
         }
     }
 
-    // Вибрация
+    // Вибрация с учетом платформы
     async vibrate(type: 'light' | 'medium' | 'heavy' | 'success' | 'warning') {
+        if (!this.isVibrationEnabled) {
+            return;
+        }
+
         try {
-            switch (type) {
-                case 'light':
-                    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    break;
-                case 'medium':
-                    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                    break;
-                case 'heavy':
-                    await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-                    break;
-                case 'success':
-                    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-                    break;
-                case 'warning':
-                    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-                    break;
+            const isIOS = Platform.OS === 'ios';
+
+            if (isIOS) {
+                // iOS использует Haptics API
+                switch (type) {
+                    case 'light':
+                        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                        break;
+                    case 'medium':
+                        await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                        break;
+                    case 'heavy':
+                        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+                        break;
+                    case 'success':
+                        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                        break;
+                    case 'warning':
+                        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                        break;
+                }
+            } else {
+                // Android использует Vibration API
+                switch (type) {
+                    case 'light':
+                        Vibration.vibrate(50);
+                        break;
+                    case 'medium':
+                        Vibration.vibrate([0, 50, 50, 50]);
+                        break;
+                    case 'heavy':
+                        Vibration.vibrate([0, 100, 50, 100, 50, 100]);
+                        break;
+                    case 'success':
+                        Vibration.vibrate([0, 50, 50, 100]);
+                        break;
+                    case 'warning':
+                        Vibration.vibrate([0, 100, 50, 50]);
+                        break;
+                }
             }
-        } catch (error) {
-            console.error('Error with haptics:', error);
+        } catch (e) {
+            console.error('Vibration error:', e);
+            // Fallback to basic vibration
+            try {
+                Vibration.vibrate(100);
+            } catch (error) {
+                console.error('Basic vibration failed:', error);
+            }
+        }
+    }
+
+    // Установка состояния вибрации
+    setVibrationEnabled(enabled: boolean) {
+        this.isVibrationEnabled = enabled;
+        // Тестовая вибрация при включении
+        if (enabled) {
+            this.vibrate('medium');
         }
     }
 

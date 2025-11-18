@@ -39,7 +39,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }) => {
             totalBonuses: 0,
             bonusesByType: { shield: 0, magnet: 0, slowmo: 0, coin: 0 }
         },
-        audioSettings: { sound: true, music: true, vibration: true },
+        audioSettings: { sound: true, music: true, vibration: true, notifications: true },
         skins: [],
         currentSkinId: 'default'
     };
@@ -71,7 +71,20 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }) => {
         updateAudioSettings({ [setting]: value });
         try {
             playSound('button_click');
-            vibrate('light');
+            // Для переключателя вибрации используем специальную логику
+            if (setting === 'vibration') {
+                if (value) {
+                    // Если включаем вибрацию, сразу даем обратную связь
+                    vibrate('medium');
+                }
+            } else if (setting === 'notifications') {
+                // При включении уведомлений даем ощутимую обратную связь
+                if (value) vibrate('medium');
+                else vibrate('light');
+            } else {
+                // Для других настроек используем легкую вибрацию
+                vibrate('light');
+            }
         } catch (error) {
             console.error('Error in handleToggleChange:', error);
         }
@@ -113,6 +126,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }) => {
         { id: 'sound', type: 'toggle', label: '🔊 Звуки эффектов' },
         { id: 'music', type: 'toggle', label: '🎵 Фоновая музыка' },
         { id: 'vibration', type: 'toggle', label: '📳 Вибрация' },
+        { id: 'notifications', type: 'toggle', label: '🔔 Уведомления' },
     ];
 
     const currentData = activeTab === 'stats' ? statsData : audioData;

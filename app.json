@@ -19,7 +19,10 @@
         "monochromeImage": ""
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+  "permissions": ["VIBRATE", "POST_NOTIFICATIONS"],
+      "package": "com.fallzone.game",
+      "versionCode": 1
     },
     "web": {
       "output": "static",

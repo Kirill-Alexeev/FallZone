@@ -1,6 +1,7 @@
 // context/GameContext.tsx
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import AudioService from '../services/audioService';
+import NotificationService from '../services/notificationService';
 import { AudioSettings, DEFAULT_GAME_DATA, GameData, GameStats, loadGameData, saveGameData, Skin } from '../services/storage';
 
 interface GameContextType {
@@ -27,6 +28,8 @@ interface GameContextType {
     switchToMenuMusic: () => void;
     switchToGameMusic: () => void;
     vibrate: (type: 'light' | 'medium' | 'heavy' | 'success' | 'warning') => void;
+    scheduleNotification: (title: string, body: string, seconds?: number) => Promise<string | null>;
+    cancelAllNotifications: () => Promise<void>;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
@@ -71,6 +74,21 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     const audioSettings = data.audioSettings;
                     AudioService.setMuted(!audioSettings.sound);
                     AudioService.setMusicMuted(!audioSettings.music);
+
+                    // Применяем настройки вибрации
+                    if (audioSettings.vibration !== undefined) {
+                        AudioService.setVibrationEnabled(audioSettings.vibration);
+                    }
+
+                    // Инициализируем notifications и отменяем запланированные, если выключено
+                    try {
+                        await NotificationService.initNotifications();
+                        if (audioSettings.notifications === false) {
+                            await NotificationService.cancelAllScheduled();
+                        }
+                    } catch (err) {
+                        console.error('Notification init error:', err);
+                    }
 
                     console.log('GameContext initialized successfully');
                 }
@@ -157,6 +175,20 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         if (settings.music !== undefined) {
             AudioService.setMusicMuted(!settings.music);
+        }
+        if (settings.vibration !== undefined) {
+            AudioService.setVibrationEnabled(settings.vibration);
+        }
+        if (settings.notifications !== undefined) {
+            if (settings.notifications) {
+                // включили уведомления — инициализируем и даем тестовую нотификацию
+                NotificationService.initNotifications()
+                    .then(() => NotificationService.scheduleNotification({ title: 'FallZone', body: 'Уведомления включены! Загляните в игру.', seconds: 10 }))
+                    .catch(e => console.error('Notification schedule error:', e));
+            } else {
+                // выключили уведомления — отменяем все
+                NotificationService.cancelAllScheduled().catch(e => console.error('Notification cancel error:', e));
+            }
         }
 
         saveData(updatedData);
@@ -348,7 +380,24 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         stopMusic,
         switchToMenuMusic,
         switchToGameMusic,
-        vibrate
+        vibrate,
+        scheduleNotification: async (title: string, body: string, seconds = 1) => {
+            try {
+                await NotificationService.initNotifications();
+                const id = await NotificationService.scheduleNotification({ title, body, seconds });
+                return id;
+            } catch (e) {
+                console.error('scheduleNotification error:', e);
+                return null;
+            }
+        },
+        cancelAllNotifications: async () => {
+            try {
+                await NotificationService.cancelAllScheduled();
+            } catch (e) {
+                console.error('cancelAllNotifications error:', e);
+            }
+        }
     };
 
     return (

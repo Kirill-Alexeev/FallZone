@@ -38,6 +38,7 @@ export interface AudioSettings {
     sound: boolean;
     music: boolean;
     vibration: boolean;
+    notifications?: boolean;
 }
 
 export interface GameData {
@@ -109,7 +110,8 @@ export const DEFAULT_GAME_DATA: GameData = {
     audioSettings: {
         sound: true,
         music: true,
-        vibration: true
+        vibration: true,
+        notifications: true
     },
     skins: DEFAULT_SKINS,
     currentSkinId: 'default'
