@@ -1,6 +1,5 @@
 // app/signup.tsx
-import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Alert, TextInput, View } from 'react-native';
 import BackgroundWithStars from '../components/ui/BackgroundWithStars';
 import CustomButton from '../components/ui/CustomButton';
@@ -8,25 +7,27 @@ import CustomText from '../components/ui/CustomText';
 import { useAuth } from '../context/AuthContext';
 import { authStyles } from './auth.styles';
 
-const SignUpScreen = () => {
+interface SignUpScreenProps {
+    onBack?: () => void;
+}
+
+const SignUpScreen: React.FC<SignUpScreenProps> = ({ onBack }) => {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const { signUp, user } = useAuth();
-    const router = useRouter();
 
-    // Если уже авторизован - редирект на главную
-    useEffect(() => {
-        if (user) {
-            router.replace('/');
-        }
-    }, [user]);
+    // Если уже авторизован - компонент не должен отображаться
+    if (user) {
+        return null;
+    }
 
     const handleSignUp = async () => {
         setError('');
 
+        // Валидация
         if (!email || !password || !confirmPassword) {
             setError('Заполните все поля');
             return;
@@ -37,31 +38,31 @@ const SignUpScreen = () => {
             return;
         }
 
-        if (password !== confirmPassword) {
-            setError('Пароли не совпадают');
-            return;
-        }
-
         if (password.length < 6) {
             setError('Пароль должен быть не менее 6 символов');
             return;
         }
 
-        setLoading(true);
-        try {
-            await signUp(email, password);
-            // Редирект произойдет автоматически через useEffect выше
-        } catch (error: any) {
-            const errorMessage = error.message || 'Ошибка при создании аккаунта';
-            setError(errorMessage);
-            Alert.alert('Ошибка регистрации', errorMessage);
-        } finally {
-            setLoading(false);
+        if (password !== confirmPassword) {
+            setError('Пароли не совпадают');
+            return;
         }
+
+        setLoading(true);
+        const result = await signUp(email, password);
+        setLoading(false);
+
+        if (!result.success) {
+            setError(result.error || 'Ошибка регистрации');
+            Alert.alert('Ошибка регистрации', result.error);
+        }
+        // При успехе MainApp покажет главную страницу
     };
 
     const goToLogin = () => {
-        router.push('/login' as any); // временное решение
+        if (onBack) {
+            onBack();
+        }
     };
 
     return (

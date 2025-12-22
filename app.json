@@ -24,7 +24,7 @@
         "VIBRATE",
         "POST_NOTIFICATIONS"
       ],
-      "package": "com.fallzone.game",
+      "package": "com.fallzone.app",
       "versionCode": 1
     },
     "web": {

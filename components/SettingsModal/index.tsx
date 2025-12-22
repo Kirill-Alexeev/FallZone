@@ -1,6 +1,7 @@
 // components/SettingsScreen/SettingsModal.tsx
 import React, { useState } from 'react';
 import { FlatList, Modal, View } from 'react-native';
+import { useAuth } from '../../context/AuthContext'; // Импортируем контекст аутентификации
 import { useGame } from '../../context/GameContext';
 import CustomButton from '../ui/CustomButton';
 import CustomText from '../ui/CustomText';
@@ -22,7 +23,9 @@ interface SettingsItem {
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }) => {
     const { gameData, updateAudioSettings, playSound, vibrate } = useGame();
+    const { logout } = useAuth(); // Получаем функцию выхода
     const [activeTab, setActiveTab] = useState<'stats' | 'audio'>('stats');
+    const [isLoggingOut, setIsLoggingOut] = useState(false);
 
     // Безопасное получение данных
     const safeGameData = gameData || {
@@ -165,26 +168,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }) => {
     };
 
     // Функции для получения стилей кнопок табов
-    const getStatsTabButtonStyle = () => {
-        return activeTab === 'stats'
+    const getTabButtonStyle = (tabName: 'stats' | 'audio') => {
+        return activeTab === tabName
             ? settingsModalStyles.tabButtonActive
             : settingsModalStyles.tabButton;
     };
 
-    const getAudioTabButtonStyle = () => {
-        return activeTab === 'audio'
-            ? settingsModalStyles.tabButtonActive
-            : settingsModalStyles.tabButton;
-    };
-
-    const getStatsTabTextStyle = () => {
-        return activeTab === 'stats'
-            ? settingsModalStyles.tabButtonTextActive
-            : settingsModalStyles.tabButtonText;
-    };
-
-    const getAudioTabTextStyle = () => {
-        return activeTab === 'audio'
+    const getTabTextStyle = (tabName: 'stats' | 'audio') => {
+        return activeTab === tabName
             ? settingsModalStyles.tabButtonTextActive
             : settingsModalStyles.tabButtonText;
     };
@@ -196,6 +187,28 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }) => {
             vibrate('light');
         } catch (error) {
             console.error('Error in handleTabPress:', error);
+        }
+    };
+
+    const handleLogout = async () => {
+        try {
+            setIsLoggingOut(true);
+            playSound('button_click');
+            vibrate('medium');
+
+            // Ждем немного для завершения анимаций
+            await new Promise(resolve => setTimeout(resolve, 300));
+
+            // Закрываем модальное окно
+            onClose();
+
+            // Выполняем выход
+            await logout();
+
+            // Автоматически перенаправит на логин через AuthContext
+        } catch (error) {
+            console.error('Error during logout:', error);
+            setIsLoggingOut(false);
         }
     };
 
@@ -227,14 +240,14 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }) => {
                         <CustomButton
                             title="Статистика"
                             onPress={() => handleTabPress('stats')}
-                            buttonStyle={getStatsTabButtonStyle()}
-                            textStyle={getStatsTabTextStyle()}
+                            buttonStyle={getTabButtonStyle('stats')}
+                            textStyle={getTabTextStyle('stats')}
                         />
                         <CustomButton
                             title="Аудио"
                             onPress={() => handleTabPress('audio')}
-                            buttonStyle={getAudioTabButtonStyle()}
-                            textStyle={getAudioTabTextStyle()}
+                            buttonStyle={getTabButtonStyle('audio')}
+                            textStyle={getTabTextStyle('audio')}
                         />
                     </View>
 
@@ -246,6 +259,16 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }) => {
                         showsVerticalScrollIndicator={true}
                     />
 
+                    {/* Кнопка выхода из аккаунта */}
+                    <CustomButton
+                        title={isLoggingOut ? "Выход..." : "Выйти из аккаунта"}
+                        onPress={handleLogout}
+                        disabled={isLoggingOut}
+                        buttonStyle={settingsModalStyles.logoutButton}
+                        textStyle={settingsModalStyles.logoutButtonText}
+                    />
+
+                    {/* Кнопка закрытия */}
                     <CustomButton
                         title="Закрыть"
                         onPress={handleClose}

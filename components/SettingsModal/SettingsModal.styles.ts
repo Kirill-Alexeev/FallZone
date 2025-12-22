@@ -140,4 +140,20 @@ export const settingsModalStyles = StyleSheet.create({
         textAlign: 'center',
         letterSpacing: 0.5,
     },
+    logoutButton: {
+        backgroundColor: 'transparent',
+        borderWidth: 2,
+        borderColor: '#FF4444',
+        borderRadius: 25,
+        paddingVertical: 15,
+        marginTop: 10,
+        marginBottom: 20,
+        alignItems: 'center',
+    },
+
+    logoutButtonText: {
+        color: '#FF4444',
+        fontSize: 16,
+        fontWeight: 'bold',
+    },
 });

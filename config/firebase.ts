@@ -1,32 +1,26 @@
-// config/firebase.ts - ПРАВИЛЬНАЯ КОНФИГУРАЦИЯ
+// config/firebase.ts
 import { initializeApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
+import { initializeAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
-// КОНФИГУРАЦИЯ ДЛЯ REACT NATIVE
+// Конфигурация Firebase
 const firebaseConfig = {
     apiKey: "AIzaSyBCFbtOj1UXJboLagydl2wRDmOI0BXAxVU",
+    authDomain: "fallzone-9cda7.firebaseapp.com",
     projectId: "fallzone-9cda7",
     storageBucket: "fallzone-9cda7.firebasestorage.app",
-    appId: "1:465041975512:android:35af392c86a97a78064fad",
-    messagingSenderId: "465041975512"
+    messagingSenderId: "465041975512",
+    appId: "1:465041975512:android:35af392c86a97a78064fad"
 };
-
-console.log('🔥 Firebase Config:', {
-    apiKey: firebaseConfig.apiKey?.substring(0, 10) + '...',
-    projectId: firebaseConfig.projectId,
-    appId: firebaseConfig.appId?.substring(0, 20) + '...',
-});
 
 // Инициализация
 const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
+
+// Инициализация Auth с явной типизацией
+const auth = initializeAuth(app, {
+    persistence: undefined // или добавьте нужную persistence
+});
+
 const db = getFirestore(app);
 
-// Для отладки
-console.log('✅ Firebase App initialized:', app.name);
-console.log('✅ Firebase Auth initialized:', !!auth);
-console.log('✅ Firebase Firestore initialized:', !!db);
-
 export { auth, db };
-

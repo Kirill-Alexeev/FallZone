@@ -6,7 +6,7 @@ import {
     signOut,
     User
 } from 'firebase/auth';
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { auth } from '../config/firebase';
 
 interface AuthContextType {
@@ -23,35 +23,68 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
     const [firebaseError, setFirebaseError] = useState<string | null>(null);
+    const isMounted = useRef(true);
+    const unsubscribeRef = useRef<() => void>(() => { });
 
     useEffect(() => {
         console.log('🔄 Инициализация Firebase Auth...');
+        isMounted.current = true;
+
+        // Проверяем что auth инициализирован
+        if (!auth) {
+            console.error('❌ Firebase Auth не инициализирован');
+            if (isMounted.current) {
+                setLoading(false);
+                setFirebaseError('Firebase не инициализирован');
+            }
+            return;
+        }
+
+        // Отписываемся от предыдущего слушателя если есть
+        if (unsubscribeRef.current) {
+            unsubscribeRef.current();
+        }
 
         const unsubscribe = onAuthStateChanged(auth,
             (user) => {
-                // Успех
-                console.log('✅ Firebase Auth инициализирован');
+                if (!isMounted.current) return;
+
+                console.log('✅ Firebase Auth состояние изменено');
                 console.log('👤 Пользователь:', user ? user.email : 'null');
                 setUser(user);
                 setLoading(false);
                 setFirebaseError(null);
             },
             (error) => {
-                // Ошибка
+                if (!isMounted.current) return;
+
                 console.error('❌ Ошибка Firebase Auth:', error);
                 setFirebaseError(error.message);
                 setLoading(false);
             }
         );
 
+        unsubscribeRef.current = unsubscribe;
+
         return () => {
             console.log('🧹 Очистка Firebase Auth слушателя');
-            unsubscribe();
+            isMounted.current = false;
+            if (unsubscribeRef.current) {
+                unsubscribeRef.current();
+            }
         };
     }, []);
 
-    const signUp = async (email: string, password: string) => {
+    const signUp = async (email: string, password: string): Promise<{ success: boolean, error?: string }> => {
         console.log('📝 Регистрация:', email);
+
+        // Проверяем что auth инициализирован
+        if (!auth) {
+            return {
+                success: false,
+                error: 'Firebase не инициализирован'
+            };
+        }
 
         // Проверяем наличие ошибки подключения
         if (firebaseError) {
@@ -93,8 +126,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     };
 
-    const signIn = async (email: string, password: string) => {
+    const signIn = async (email: string, password: string): Promise<{ success: boolean, error?: string }> => {
         console.log('🔐 Вход:', email);
+
+        // Проверяем что auth инициализирован
+        if (!auth) {
+            return {
+                success: false,
+                error: 'Firebase не инициализирован'
+            };
+        }
 
         // Проверяем наличие ошибки подключения
         if (firebaseError) {
@@ -142,10 +183,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     };
 
-    const logout = async () => {
+    const logout = async (): Promise<void> => {
         try {
+            console.log('🚪 Начинаем выход...');
+            if (!auth) {
+                console.error('❌ Firebase Auth не инициализирован');
+                return;
+            }
+
             await signOut(auth);
-            console.log('👋 Пользователь вышел');
+            console.log('✅ Пользователь успешно вышел');
+
+            // Явно сбрасываем состояние
+            setUser(null);
+            setFirebaseError(null);
+
         } catch (error: any) {
             console.error('❌ Ошибка выхода:', error);
             throw error;

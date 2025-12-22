@@ -1,6 +1,5 @@
 // app/login.tsx
-import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { Alert, TextInput, View } from 'react-native';
 import BackgroundWithStars from '../components/ui/BackgroundWithStars';
 import CustomButton from '../components/ui/CustomButton';
@@ -13,15 +12,14 @@ const LoginScreen = () => {
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [showSignup, setShowSignup] = useState(false); // Новое состояние
     const { signIn, user } = useAuth();
-    const router = useRouter();
 
-    // Если уже авторизован - редирект на главную
-    useEffect(() => {
-        if (user) {
-            router.replace('/');
-        }
-    }, [user]);
+    // Если уже авторизован - компонент не должен отображаться
+    // (MainApp в _layout.tsx перенаправит на главную)
+    if (user) {
+        return null;
+    }
 
     const handleLogin = async () => {
         setError('');
@@ -32,25 +30,27 @@ const LoginScreen = () => {
         }
 
         setLoading(true);
-        try {
-            const result = await signIn(email, password);
-            if (!result.success) {
-                setError(result.error || 'Ошибка входа');
-                Alert.alert('Ошибка входа', result.error || 'Неверный email или пароль');
-            }
-        } catch (error: any) {
-            const errorMessage = error.message || 'Неверный email или пароль';
-            setError(errorMessage);
-            Alert.alert('Ошибка входа', errorMessage);
-        } finally {
-            setLoading(false);
+
+        const result = await signIn(email, password);
+
+        if (!result.success) {
+            setError(result.error || 'Ошибка входа');
+            Alert.alert('Ошибка входа', result.error);
         }
+        // При успехе MainApp покажет главную страницу
+
+        setLoading(false);
     };
 
-    // Исправленная навигация - используем pathname объект
     const goToSignup = () => {
-        router.push({ pathname: '/signup' } as any);
+        setShowSignup(true);
     };
+
+    // Если showSignup true, показываем SignUpScreen
+    if (showSignup) {
+        const SignUpScreen = require('./signup').default;
+        return <SignUpScreen onBack={() => setShowSignup(false)} />;
+    }
 
     return (
         <BackgroundWithStars>

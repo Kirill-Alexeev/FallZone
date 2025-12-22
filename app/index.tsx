@@ -19,17 +19,54 @@ import { homeScreenStyles } from './index.styles';
 const HomeScreen = () => {
     const router = useRouter();
     const [settingsVisible, setSettingsVisible] = React.useState(false);
-    const { playSound, switchToMenuMusic, vibrate, gameData } = useGame();
     const { logout } = useAuth();
+    const { user } = useAuth();
+
+    // Безопасное использование useGame - только если пользователь авторизован
+    const gameContext = user ? useGame() : null;
+
+    const playSound = (soundName: string) => {
+        if (gameContext) {
+            try {
+                gameContext.playSound(soundName);
+            } catch (error) {
+                console.error('Error playing sound:', error);
+            }
+        }
+    };
+
+    const vibrate = (type: 'light' | 'medium' | 'heavy') => {
+        if (gameContext) {
+            try {
+                gameContext.vibrate(type);
+            } catch (error) {
+                console.error('Error vibrating:', error);
+            }
+        }
+    };
+
+    const switchToMenuMusic = () => {
+        if (gameContext) {
+            try {
+                gameContext.switchToMenuMusic();
+            } catch (error) {
+                console.error('Error switching to menu music:', error);
+            }
+        }
+    };
+
+    const gameData = gameContext?.gameData;
 
     // Включаем музыку меню при загрузке
     useEffect(() => {
-        try {
-            switchToMenuMusic();
-        } catch (error) {
-            console.error('Error playing menu music:', error);
+        if (user) {
+            try {
+                switchToMenuMusic();
+            } catch (error) {
+                console.error('Error playing menu music:', error);
+            }
         }
-    }, [switchToMenuMusic]);
+    }, [user, switchToMenuMusic]);
 
     // Дополнительная проверка настроек музыки при изменении настроек
     useEffect(() => {
@@ -71,6 +108,22 @@ const HomeScreen = () => {
         setSettingsVisible(false);
     };
 
+    const handleLogout = () => {
+        try {
+            playSound('button_click');
+            vibrate('medium');
+            logout();
+        } catch (error) {
+            console.error('Error in logout:', error);
+        }
+    };
+
+    // Если пользователь не авторизован, не рендерим этот экран
+    // (должен быть редирект на логин через _layout.tsx)
+    if (!user) {
+        return null;
+    }
+
     return (
         <LinearGradient
             colors={['#000', '#4B0082', '#00008B']}
@@ -95,20 +148,8 @@ const HomeScreen = () => {
                 />
             </View>
             <StatsDisplay />
-            <CustomButton
-                title="Выйти"
-                onPress={() => logout()}
-                buttonStyle={{
-                    backgroundColor: 'transparent',
-                    borderWidth: 1,
-                    borderColor: '#FF4444',
-                    marginTop: 10,
-                    marginBottom: 20
-                }}
-                textStyle={{ color: '#FF4444' }}
-            />
 
-            {/* Модальное окно статистики */}
+            {/* Модальное окно настроек */}
             <SettingsModal
                 visible={settingsVisible}
                 onClose={handleCloseSettings}

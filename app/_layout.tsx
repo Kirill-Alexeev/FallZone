@@ -1,9 +1,4 @@
 // Главный навигационный компонент приложения с нижним таб-меню
-// Создает нижнюю панель с 3 вкладками: Главная, Лидерборд, Магазин
-// Скрывает экран игры из таб-меню (href: null)
-// Настраивает стили табов (неоновые цвета, прозрачный фон)
-// Игра доступна только через кнопку на главной
-
 import { FontAwesome } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import { ActivityIndicator, View } from 'react-native';
@@ -11,6 +6,9 @@ import CustomText from '../components/ui/CustomText';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { GameProvider } from '../context/GameContext';
 import { NavigationProvider, useNavigation } from '../context/NavigationContext';
+
+// Импортируем LoginScreen напрямую
+import LoginScreen from './login';
 
 // Компонент для защищенных экранов (требует авторизации)
 const ProtectedTabNavigator = () => {
@@ -61,7 +59,7 @@ const ProtectedTabNavigator = () => {
                     href: null,
                 }}
             />
-            {/* Добавляем экраны аутентификации как скрытые */}
+            {/* Оставляем экраны аутентификации скрытыми */}
             <Tabs.Screen
                 name="login"
                 options={{
@@ -95,8 +93,6 @@ const AuthWrapper = ({ children }: { children: React.ReactNode }) => {
         return <LoadingScreen />;
     }
 
-    // Если не авторизован - показываем логин через условный рендеринг
-    // Редирект делаем через onMount в компонентах login/signup
     return <>{children}</>;
 };
 
@@ -106,8 +102,6 @@ const MainApp = () => {
 
     // Если не авторизован - показываем логин
     if (!user) {
-        // Импортируем компоненты динамически чтобы избежать циклических зависимостей
-        const LoginScreen = require('./signup').default;
         return <LoginScreen />;
     }
 
