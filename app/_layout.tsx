@@ -6,10 +6,14 @@
 
 import { FontAwesome } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
+import { ActivityIndicator, View } from 'react-native';
+import CustomText from '../components/ui/CustomText';
+import { AuthProvider, useAuth } from '../context/AuthContext';
 import { GameProvider } from '../context/GameContext';
 import { NavigationProvider, useNavigation } from '../context/NavigationContext';
 
-const TabNavigator = () => {
+// Компонент для защищенных экранов (требует авторизации)
+const ProtectedTabNavigator = () => {
     const { isTabBarVisible } = useNavigation();
 
     return (
@@ -26,7 +30,7 @@ const TabNavigator = () => {
                     right: 0,
                     elevation: 0,
                     shadowOpacity: 0,
-                    display: isTabBarVisible ? 'flex' : 'none', // Скрываем/показываем панель
+                    display: isTabBarVisible ? 'flex' : 'none',
                 },
                 headerShown: false,
             }}>
@@ -48,7 +52,7 @@ const TabNavigator = () => {
                 name="shop"
                 options={{
                     title: 'Магазин',
-                    tabBarIcon: ({ color }) => <FontAwesome name="shopping-cart" size={28} color={color} />, // Иконка корзины для магазина
+                    tabBarIcon: ({ color }) => <FontAwesome name="shopping-cart" size={28} color={color} />,
                 }}
             />
             <Tabs.Screen
@@ -57,18 +61,75 @@ const TabNavigator = () => {
                     href: null,
                 }}
             />
+            {/* Добавляем экраны аутентификации как скрытые */}
+            <Tabs.Screen
+                name="login"
+                options={{
+                    href: null,
+                }}
+            />
+            <Tabs.Screen
+                name="signup"
+                options={{
+                    href: null,
+                }}
+            />
         </Tabs>
     );
 };
 
-const Layout = () => {
+// Компонент загрузки
+const LoadingScreen = () => (
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000' }}>
+        <ActivityIndicator size="large" color="#00FFFF" />
+        <CustomText style={{ color: '#00FFFF', fontSize: 20, marginTop: 20 }}>Загрузка...</CustomText>
+    </View>
+);
+
+// Главный лейаут с логикой проверки авторизации
+const AuthWrapper = ({ children }: { children: React.ReactNode }) => {
+    const { user, loading } = useAuth();
+
+    // Показываем лоадер при загрузке
+    if (loading) {
+        return <LoadingScreen />;
+    }
+
+    // Если не авторизован - показываем логин через условный рендеринг
+    // Редирект делаем через onMount в компонентах login/signup
+    return <>{children}</>;
+};
+
+// Главный компонент
+const MainApp = () => {
+    const { user } = useAuth();
+
+    // Если не авторизован - показываем логин
+    if (!user) {
+        // Импортируем компоненты динамически чтобы избежать циклических зависимостей
+        const LoginScreen = require('./signup').default;
+        return <LoginScreen />;
+    }
+
+    // Если авторизован - показываем основной интерфейс
     return (
         <NavigationProvider>
             <GameProvider>
-                <TabNavigator />
+                <ProtectedTabNavigator />
             </GameProvider>
         </NavigationProvider>
     );
 };
 
-export default Layout;
+// Корневой компонент
+const RootLayout = () => {
+    return (
+        <AuthProvider>
+            <AuthWrapper>
+                <MainApp />
+            </AuthWrapper>
+        </AuthProvider>
+    );
+};
+
+export default RootLayout;

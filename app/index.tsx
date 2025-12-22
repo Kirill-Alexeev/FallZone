@@ -11,6 +11,7 @@ import CustomButton from '../components/ui/CustomButton';
 import CustomText from '../components/ui/CustomText';
 import StarsAnimation from '../components/ui/StarsAnimation';
 import StatsDisplay from '../components/ui/StatsDisplay';
+import { useAuth } from '../context/AuthContext';
 import { useGame } from '../context/GameContext';
 import AudioService from '../services/audioService';
 import { homeScreenStyles } from './index.styles';
@@ -19,6 +20,7 @@ const HomeScreen = () => {
     const router = useRouter();
     const [settingsVisible, setSettingsVisible] = React.useState(false);
     const { playSound, switchToMenuMusic, vibrate, gameData } = useGame();
+    const { logout } = useAuth();
 
     // Включаем музыку меню при загрузке
     useEffect(() => {
@@ -93,6 +95,18 @@ const HomeScreen = () => {
                 />
             </View>
             <StatsDisplay />
+            <CustomButton
+                title="Выйти"
+                onPress={() => logout()}
+                buttonStyle={{
+                    backgroundColor: 'transparent',
+                    borderWidth: 1,
+                    borderColor: '#FF4444',
+                    marginTop: 10,
+                    marginBottom: 20
+                }}
+                textStyle={{ color: '#FF4444' }}
+            />
 
             {/* Модальное окно статистики */}
             <SettingsModal
