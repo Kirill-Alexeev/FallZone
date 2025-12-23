@@ -601,7 +601,7 @@ class SpaceGameEngine {
         const sessionData: SessionData = {
             score: this.state.score,
             coins: this.state.coins,
-            playTime: this.playTime,
+            playTime: Math.floor(this.playTime),
             tapCount: this.tapCount,
             bonusesCollected: this.collectedBonuses.filter(b => b.count > 0)
         };

@@ -67,8 +67,8 @@ const GameScreen = () => {
         }
     }, [gamePhase, hideTabBar, showTabBar]);
 
-    const handleGameOver = useCallback((score: number, coins: number) => {
-        console.log('GAME SCREEN: Game Over received - Score:', score, 'Coins:', coins);
+    const handleGameOver = useCallback(async (score: number, coins: number) => {
+        console.log('GAME SCREEN: Game Over - Score:', score, 'Coins:', coins);
 
         // НЕМЕДЛЕННО останавливаем игру
         setIsRunning(false);
@@ -80,24 +80,17 @@ const GameScreen = () => {
         playSound('game_over');
         vibrate('heavy');
 
-        // Сохраняем статистику и обновляем рекорд
+        // Сохраняем статистику - ВСЁ В ОДНОЙ ОПЕРАЦИИ
         if (gameEngineRef.current) {
             const sessionData = gameEngineRef.current.getSessionData();
             console.log('GAME SCREEN: Saving session data:', sessionData);
 
-            recordGameSession(sessionData);
+            // ВАЖНО: ТОЛЬКО ОДИН ВЫЗОВ - recordGameSession делает всё
+            await recordGameSession(sessionData);
 
-            // КРИТИЧЕСКОЕ ИСПРАВЛЕНИЕ: Всегда обновляем рекорд
-            if (score > currentHighScore) {
-                console.log('New high score!', score, '>', currentHighScore);
-                updateHighScore(score);
-            }
-
-            if (coins > 0) {
-                addCoins(coins);
-            }
+            console.log('✅ Game session recorded successfully');
         }
-    }, [recordGameSession, updateHighScore, addCoins, currentHighScore, playSound, vibrate]);
+    }, [recordGameSession, playSound, vibrate]);
 
     const handleScoreUpdate = useCallback((score: number, coins: number) => {
         setGameState(prev => prev ? ({ ...prev, score, coins }) : null);

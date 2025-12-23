@@ -121,9 +121,6 @@ const LeaderboardScreen = () => {
                 <CustomText style={styles.scoreText}>
                     {item.highScore.toLocaleString()}
                 </CustomText>
-                <CustomText style={styles.gamesText}>
-                    🎮 {item.totalGames}
-                </CustomText>
             </View>
         </View>
     );
