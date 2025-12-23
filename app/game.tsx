@@ -225,11 +225,6 @@ const GameScreen = () => {
                         Магнит активен!
                     </CustomText>
                 )}
-                {gameState.activeBonuses.slowmo && (
-                    <CustomText style={{ position: 'absolute', top: 160, left: 20, color: 'purple' }}>
-                        Замедление!
-                    </CustomText>
-                )}
 
                 {/* Экран начала игры */}
                 {gamePhase === 'idle' && (

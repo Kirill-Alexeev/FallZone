@@ -31,7 +31,6 @@ export const migrateGuestToUser = async (user: User, userData: GameData): Promis
                     totalScore: userData.stats.totalScore + guestData.stats.totalScore,
                     totalDeaths: userData.stats.totalDeaths + guestData.stats.totalDeaths,
                     deathsByObstacle: {
-                        comet: userData.stats.deathsByObstacle.comet + guestData.stats.deathsByObstacle.comet,
                         asteroid: userData.stats.deathsByObstacle.asteroid + guestData.stats.deathsByObstacle.asteroid,
                         drone: userData.stats.deathsByObstacle.drone + guestData.stats.deathsByObstacle.drone,
                         wall: userData.stats.deathsByObstacle.wall + guestData.stats.deathsByObstacle.wall,
@@ -40,7 +39,6 @@ export const migrateGuestToUser = async (user: User, userData: GameData): Promis
                     bonusesByType: {
                         shield: userData.stats.bonusesByType.shield + guestData.stats.bonusesByType.shield,
                         magnet: userData.stats.bonusesByType.magnet + guestData.stats.bonusesByType.magnet,
-                        slowmo: userData.stats.bonusesByType.slowmo + guestData.stats.bonusesByType.slowmo,
                         coin: userData.stats.bonusesByType.coin + guestData.stats.bonusesByType.coin,
                     }
                 },

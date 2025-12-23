@@ -5,7 +5,7 @@ import { Image, View } from 'react-native';
 interface BonusProps {
     x: number;
     y: number;
-    type: 'shield' | 'magnet' | 'slowmo' | 'coin';
+    type: 'shield' | 'magnet' | 'coin';
     size?: number;
 }
 
@@ -16,8 +16,6 @@ const Bonus: React.FC<BonusProps> = ({ x, y, type, size = 30 }) => {
                 return require('../assets/sprites/bonuses/shield.png');
             case 'magnet':
                 return require('../assets/sprites/bonuses/magnet.png');
-            case 'slowmo':
-                return require('../assets/sprites/bonuses/slowmo.png');
             case 'coin':
             default:
                 return require('../assets/sprites/bonuses/coin.png');

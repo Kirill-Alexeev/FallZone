@@ -12,7 +12,7 @@ const BalanceDisplay: React.FC = () => {
         <View style={balanceDisplayStyles.container}>
             <CoinSvg width={20} height={20} />
             <CustomText style={balanceDisplayStyles.text}>
-                {gameData.coins}
+                {gameData?.coins}
             </CustomText>
         </View>
     );

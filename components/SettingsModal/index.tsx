@@ -38,9 +38,9 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }) => {
             totalCoinsEarned: 0,
             totalScore: 0,
             totalDeaths: 0,
-            deathsByObstacle: { comet: 0, asteroid: 0, drone: 0, wall: 0 },
+            deathsByObstacle: { asteroid: 0, drone: 0, wall: 0 },
             totalBonuses: 0,
-            bonusesByType: { shield: 0, magnet: 0, slowmo: 0, coin: 0 }
+            bonusesByType: { shield: 0, magnet: 0, coin: 0 }
         },
         audioSettings: { sound: true, music: true, vibration: true, notifications: true },
         skins: [],
@@ -105,7 +105,6 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }) => {
 
         { id: 'section2', type: 'header', label: 'Причины смертей' },
         { id: 'totalDeaths', type: 'stat', label: 'Всего смертей', value: stats.totalDeaths.toString() },
-        { id: 'cometDeaths', type: 'stat', label: '💥 Кометы', value: `${stats.deathsByObstacle.comet} (${getDeathPercentage(stats.deathsByObstacle.comet)})` },
         { id: 'asteroidDeaths', type: 'stat', label: '🪨 Астероиды', value: `${stats.deathsByObstacle.asteroid} (${getDeathPercentage(stats.deathsByObstacle.asteroid)})` },
         { id: 'droneDeaths', type: 'stat', label: '🤖 Дроны', value: `${stats.deathsByObstacle.drone} (${getDeathPercentage(stats.deathsByObstacle.drone)})` },
         { id: 'wallDeaths', type: 'stat', label: '🧱 Стены', value: `${stats.deathsByObstacle.wall} (${getDeathPercentage(stats.deathsByObstacle.wall)})` },
@@ -114,13 +113,12 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ visible, onClose }) => {
         { id: 'totalBonuses', type: 'stat', label: 'Всего бонусов', value: stats.totalBonuses.toString() },
         { id: 'shieldBonuses', type: 'stat', label: '🛡️ Щиты', value: stats.bonusesByType.shield.toString() },
         { id: 'magnetBonuses', type: 'stat', label: '🧲 Магниты', value: stats.bonusesByType.magnet.toString() },
-        { id: 'slowmoBonuses', type: 'stat', label: '⏱️ Замедление', value: stats.bonusesByType.slowmo.toString() },
         { id: 'coinBonuses', type: 'stat', label: '💰 Монеты', value: stats.bonusesByType.coin.toString() },
 
         { id: 'section4', type: 'header', label: 'Средние показатели' },
         { id: 'avgScore', type: 'stat', label: 'Средний счет', value: stats.totalGames > 0 ? Math.round(stats.totalScore / stats.totalGames).toString() : '0' },
         { id: 'avgTime', type: 'stat', label: 'Среднее время', value: stats.totalGames > 0 ? formatTime(stats.totalPlayTime / stats.totalGames) : '0с' },
-        { id: 'avgTaps', type: 'stat', label: 'Тапов/игру', value: stats.totalGames > 0 ? Math.round(stats.totalTaps / stats.totalGames).toString() : '0' },
+        { id: 'avgTaps', type: 'stat', label: 'Тапов за игру', value: stats.totalGames > 0 ? Math.round(stats.totalTaps / stats.totalGames).toString() : '0' },
     ];
 
     // Данные для вкладки аудио

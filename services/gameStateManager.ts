@@ -87,8 +87,8 @@ class GameStateManager {
         coins: number;
         playTime: number;
         tapCount: number;
-        deathBy?: 'comet' | 'asteroid' | 'drone' | 'wall';
-        bonusesCollected?: { type: 'shield' | 'magnet' | 'slowmo' | 'coin'; count: number }[];
+        deathBy?: 'asteroid' | 'drone' | 'wall';
+        bonusesCollected?: { type: 'shield' | 'magnet' | 'coin'; count: number }[];
     }) {
         await this.saveWithQueue((current) => {
             console.log('Recording session:', sessionData);

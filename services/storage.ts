@@ -10,7 +10,6 @@ export interface GameStats {
     totalScore: number;
     totalDeaths: number;
     deathsByObstacle: {
-        comet: number;
         asteroid: number;
         drone: number;
         wall: number;
@@ -19,7 +18,6 @@ export interface GameStats {
     bonusesByType: {
         shield: number;
         magnet: number;
-        slowmo: number;
         coin: number;
     };
 }
@@ -95,7 +93,6 @@ export const DEFAULT_GAME_DATA: GameData = {
         totalScore: 0,
         totalDeaths: 0,
         deathsByObstacle: {
-            comet: 0,
             asteroid: 0,
             drone: 0,
             wall: 0
@@ -104,7 +101,6 @@ export const DEFAULT_GAME_DATA: GameData = {
         bonusesByType: {
             shield: 0,
             magnet: 0,
-            slowmo: 0,
             coin: 0
         }
     },

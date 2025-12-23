@@ -8,21 +8,19 @@ interface ObstacleProps {
     y: number;
     width: number;
     height: number;
-    type: 'comet' | 'asteroid' | 'drone' | 'wall';
+    type: 'asteroid' | 'drone' | 'wall';
     gap?: number;
 }
 
 const Obstacle: React.FC<ObstacleProps> = ({ x, y, width, height, type, gap }) => {
     const getObstacleImage = (obstacleType: string) => {
         switch (obstacleType) {
-            case 'comet':
-                return require('../../assets/sprites/obstacles/comet.png');
             case 'asteroid':
                 return require('../../assets/sprites/obstacles/asteroid.png');
             case 'drone':
                 return require('../../assets/sprites/obstacles/drone.png');
             default:
-                return require('../../assets/sprites/obstacles/asteroid.png'); // fallback
+                return require('../../assets/sprites/obstacles/asteroid.png');
         }
     };
 

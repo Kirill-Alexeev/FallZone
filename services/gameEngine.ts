@@ -13,7 +13,7 @@ export interface ObstacleState {
     y: number;
     width: number;
     height: number;
-    type: 'comet' | 'asteroid' | 'drone' | 'wall';
+    type: 'asteroid' | 'drone' | 'wall';
     id: string;
     passed?: boolean;
     gap?: number;
@@ -26,7 +26,7 @@ export interface ObstacleState {
 export interface BonusState {
     x: number;
     y: number;
-    type: 'shield' | 'magnet' | 'slowmo' | 'coin';
+    type: 'shield' | 'magnet' | 'coin';
     id: string;
     collected?: boolean;
 }
@@ -52,8 +52,8 @@ export interface SessionData {
     coins: number;
     playTime: number;
     tapCount: number;
-    deathBy?: 'comet' | 'asteroid' | 'drone' | 'wall';
-    bonusesCollected?: { type: 'shield' | 'magnet' | 'slowmo' | 'coin'; count: number }[];
+    deathBy?: 'asteroid' | 'drone' | 'wall';
+    bonusesCollected?: { type: 'shield' | 'magnet' | 'coin'; count: number }[];
 }
 
 class SpaceGameEngine {
@@ -72,11 +72,10 @@ class SpaceGameEngine {
     private tapCount: number = 0;
     private gameStartTime: number = 0;
     private playTime: number = 0;
-    private lastObstacleCollision: 'comet' | 'asteroid' | 'drone' | 'wall' | null = null;
-    private collectedBonuses: { type: 'shield' | 'magnet' | 'slowmo' | 'coin'; count: number }[] = [
+    private lastObstacleCollision: 'asteroid' | 'drone' | 'wall' | null = null;
+    private collectedBonuses: { type: 'shield' | 'magnet' | 'coin'; count: number }[] = [
         { type: 'shield', count: 0 },
         { type: 'magnet', count: 0 },
-        { type: 'slowmo', count: 0 },
         { type: 'coin', count: 0 }
     ];
 
@@ -89,9 +88,8 @@ class SpaceGameEngine {
     private readonly PLAYER_SIZE = 40;
 
     private readonly BONUS_DURATION = {
-        shield: 3000,
+        shield: 5000,
         magnet: 5000,
-        slowmo: 2000
     };
 
     private readonly OBSTACLE_REMOVAL_DELAY = 3000; // 3 секунды задержки перед удалением
@@ -150,7 +148,6 @@ class SpaceGameEngine {
         this.collectedBonuses = [
             { type: 'shield', count: 0 },
             { type: 'magnet', count: 0 },
-            { type: 'slowmo', count: 0 },
             { type: 'coin', count: 0 }
         ];
 
@@ -208,17 +205,13 @@ class SpaceGameEngine {
     }
 
     private updateObstacles(deltaTime: number) {
-        const speed = this.BASE_SPEED * this.state.gameSpeed * (this.state.activeBonuses.slowmo ? 0.5 : 1);
+        const speed = this.BASE_SPEED * this.state.gameSpeed;
 
         // Оптимизированное обновление препятствий
         for (let i = this.state.obstacles.length - 1; i >= 0; i--) {
             const obstacle = this.state.obstacles[i];
 
             switch (obstacle.type) {
-                case 'comet':
-                    obstacle.y += speed * 1.2; // Уменьшенная скорость
-                    obstacle.x -= speed * 0.3; // Уменьшенное горизонтальное движение
-                    break;
                 case 'asteroid':
                     obstacle.x -= speed;
                     break;
@@ -246,10 +239,6 @@ class SpaceGameEngine {
             let isOutOfBounds = false;
 
             switch (obstacle.type) {
-                case 'comet':
-                    // Комету удаляем если ушла за нижнюю границу
-                    isOutOfBounds = obstacle.y > this.screenHeight + 100;
-                    break;
                 case 'asteroid':
                     // Астероид удаляем если ушел за левую границу
                     isOutOfBounds = obstacle.x + obstacle.width < -50;
@@ -277,7 +266,7 @@ class SpaceGameEngine {
     }
 
     private updateBonuses(deltaTime: number) {
-        const speed = this.BASE_SPEED * this.state.gameSpeed * (this.state.activeBonuses.slowmo ? 0.5 : 1);
+        const speed = this.BASE_SPEED * this.state.gameSpeed;
 
         this.state.bonuses.forEach(bonus => {
             if (!bonus.collected) {
@@ -289,7 +278,7 @@ class SpaceGameEngine {
                     const dy = this.state.player.y - bonus.y;
                     const distance = Math.sqrt(dx * dx + dy * dy);
 
-                    if (distance < 200) {
+                    if (distance < 300) {
                         const force = 5;
                         bonus.x += (dx / distance) * force;
                         bonus.y += (dy / distance) * force;
@@ -308,8 +297,8 @@ class SpaceGameEngine {
         this.bonusSpawnTimer += deltaTime;
 
         // Увеличиваем частоту спавна препятствий и ограничиваем их количество
-        const obstacleSpawnRate = Math.max(1000, 1500 - this.state.score * 8); // Быстрее спавн
-        const maxObstaclesOnScreen = 4; // Максимум 8 препятствий на экране
+        const obstacleSpawnRate = Math.max(1400, 1500 - this.state.score * 8);
+        const maxObstaclesOnScreen = 4;
 
         if (this.obstacleSpawnTimer > obstacleSpawnRate && this.state.obstacles.length < maxObstaclesOnScreen) {
             this.spawnRandomObstacle();
@@ -323,29 +312,18 @@ class SpaceGameEngine {
     }
 
     private spawnRandomObstacle() {
-        const types: ObstacleState['type'][] = ['comet', 'asteroid', 'drone', 'wall'];
-        const weights = [0.15, 0.4, 0.25, 0.2];
+        const types: ObstacleState['type'][] = ['asteroid', 'drone', 'wall'];
+        const weights = [0.35, 0.35, 0.3];
         const random = Math.random();
         let type: ObstacleState['type'] = 'asteroid';
 
-        if (random < weights[0]) type = 'comet';
-        else if (random < weights[0] + weights[1]) type = 'asteroid';
-        else if (random < weights[0] + weights[1] + weights[2]) type = 'drone';
+        if (random < weights[0]) type = 'asteroid';
+        else if (random < weights[0] + weights[1]) type = 'drone';
         else type = 'wall';
 
         let obstacle: ObstacleState;
 
         switch (type) {
-            case 'comet':
-                obstacle = {
-                    x: Math.random() * (this.screenWidth - 100),
-                    y: -100,
-                    width: 35,
-                    height: 35,
-                    type: 'comet',
-                    id: Math.random().toString(),
-                };
-                break;
             case 'asteroid':
                 obstacle = {
                     x: this.screenWidth,
@@ -421,7 +399,7 @@ class SpaceGameEngine {
     }
 
     private spawnRandomBonus() {
-        const types: BonusState['type'][] = ['shield', 'magnet', 'slowmo', 'coin'];
+        const types: BonusState['type'][] = ['shield', 'magnet', 'coin'];
         const type = types[Math.floor(Math.random() * types.length)];
 
         let attempts = 0;
@@ -536,9 +514,6 @@ class SpaceGameEngine {
             case 'magnet':
                 this.activateBonus('magnet');
                 break;
-            case 'slowmo':
-                this.activateBonus('slowmo');
-                break;
             case 'coin':
                 this.state.coins += 1;
                 break;
@@ -547,7 +522,7 @@ class SpaceGameEngine {
         this.onScoreUpdate(this.state.score, this.state.coins);
     }
 
-    private activateBonus(type: 'shield' | 'magnet' | 'slowmo') {
+    private activateBonus(type: 'shield' | 'magnet') {
         this.state.activeBonuses[type] = true;
         this.bonusTimers[type] = this.BONUS_DURATION[type];
     }

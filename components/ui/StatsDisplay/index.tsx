@@ -10,7 +10,7 @@ const StatsDisplay: React.FC = () => {
     return (
         <View style={statsDisplayStyles.container}>
             <CustomText style={statsDisplayStyles.text}>
-                Лучший рекорд: {gameData.highScore}
+                Лучший рекорд: {gameData?.highScore}
             </CustomText>
         </View>
     );
