@@ -1,4 +1,5 @@
 // context/AuthContext.tsx
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
     createUserWithEmailAndPassword,
     onAuthStateChanged,
@@ -15,6 +16,7 @@ interface AuthContextType {
     signUp: (email: string, password: string) => Promise<{ success: boolean, error?: string }>;
     signIn: (email: string, password: string) => Promise<{ success: boolean, error?: string }>;
     logout: () => Promise<void>;
+    clearGuestData: () => Promise<void>; // Для очистки гостевых данных
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -186,6 +188,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const logout = async (): Promise<void> => {
         try {
             console.log('🚪 Начинаем выход...');
+
+            // Очищаем гостевые данные
+            await clearGuestData();
+
             if (!auth) {
                 console.error('❌ Firebase Auth не инициализирован');
                 return;
@@ -204,12 +210,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     };
 
+    const clearGuestData = async (): Promise<void> => {
+        try {
+            // Очищаем сессионные данные гостя
+            await AsyncStorage.removeItem('fallzone_game_data_session');
+            console.log('Guest game data cleared');
+        } catch (error) {
+            console.error('Error clearing guest data:', error);
+        }
+    };
+
     const value: AuthContextType = {
         user,
         loading,
         signUp,
         signIn,
-        logout
+        logout,
+        clearGuestData
     };
 
     return (

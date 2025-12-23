@@ -1,5 +1,6 @@
 // services/storage.ts
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { User } from 'firebase/auth';
 
 export interface GameStats {
     totalGames: number;
@@ -117,36 +118,71 @@ export const DEFAULT_GAME_DATA: GameData = {
     currentSkinId: 'default'
 };
 
-const STORAGE_KEY = 'fallzone_game_data';
+// Функция для получения ключа хранения для конкретного пользователя
+export const getStorageKey = (user: User | null): string => {
+    if (!user) {
+        return 'fallzone_game_data_session';
+    }
+    return `fallzone_game_data_${user.uid}`;
+};
 
-export const loadGameData = async (): Promise<GameData> => {
+// Загрузить данные игры для пользователя
+export const loadGameData = async (user: User | null): Promise<GameData> => {
     try {
-        const storedData = await AsyncStorage.getItem(STORAGE_KEY);
+        const storageKey = getStorageKey(user);
+        console.log(`Loading game data for key: ${storageKey}, user: ${user?.email}`);
+
+        const storedData = await AsyncStorage.getItem(storageKey);
+
         if (storedData) {
             const data = JSON.parse(storedData);
-            console.log('Loaded game data:', data);
+            console.log('Loaded existing game data:', data);
             return data;
         }
-        await saveGameData(DEFAULT_GAME_DATA);
+
+        // Для нового пользователя возвращаем DEFAULT_GAME_DATA
+        // НЕ сохраняем автоматически - сохраним когда будут изменения
+        console.log('No existing game data found, using default');
         return DEFAULT_GAME_DATA;
+
     } catch (error) {
         console.error('Error loading game data:', error);
         return DEFAULT_GAME_DATA;
     }
 };
 
-export const saveGameData = async (data: GameData): Promise<void> => {
+// Сохранить данные игры для пользователя
+export const saveGameData = async (user: User | null, data: GameData): Promise<void> => {
     try {
-        console.log('Saving game data:', data);
-        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+        if (!user) {
+            console.log('Cannot save game data: no user (guest mode)');
+            return;
+        }
+
+        const storageKey = getStorageKey(user);
+        console.log(`Saving game data for user ${user.email}:`, data);
+        await AsyncStorage.setItem(storageKey, JSON.stringify(data));
     } catch (error) {
         console.error('Error saving game data:', error);
+        throw error;
     }
 };
 
-export const resetGameData = async (): Promise<void> => {
+// Удалить данные пользователя (при logout или удалении аккаунта)
+export const deleteUserGameData = async (user: User | null): Promise<void> => {
     try {
-        await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(DEFAULT_GAME_DATA));
+        const storageKey = getStorageKey(user);
+        await AsyncStorage.removeItem(storageKey);
+        console.log(`Deleted game data for user: ${user?.uid}`);
+    } catch (error) {
+        console.error('Error deleting game data:', error);
+    }
+};
+
+// Сбросить данные к значениям по умолчанию
+export const resetGameData = async (user: User | null): Promise<void> => {
+    try {
+        await saveGameData(user, DEFAULT_GAME_DATA);
     } catch (error) {
         console.error('Error resetting game data:', error);
     }

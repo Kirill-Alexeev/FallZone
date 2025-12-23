@@ -1,11 +1,26 @@
 // context/GameContext.tsx
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { LoadingScreen } from '../app/_layout';
 import AudioService from '../services/audioService';
+import { migrateGuestToUser } from '../services/dataMigration';
+import LeaderboardService from '../services/leaderboardService';
 import NotificationService from '../services/notificationService';
-import { AudioSettings, DEFAULT_GAME_DATA, GameData, GameStats, loadGameData, saveGameData, Skin } from '../services/storage';
+import {
+    AudioSettings,
+    DEFAULT_GAME_DATA,
+    GameData,
+    GameStats,
+    getStorageKey,
+    loadGameData,
+    saveGameData,
+    Skin
+} from '../services/storage';
+import { useAuth } from './AuthContext';
 
 interface GameContextType {
     gameData: GameData | null;
+    isLoading: boolean;
     updateStats: (newStats: Partial<GameStats>) => void;
     addCoins: (amount: number) => void;
     updateHighScore: (score: number) => void;
@@ -30,13 +45,17 @@ interface GameContextType {
     vibrate: (type: 'light' | 'medium' | 'heavy' | 'success' | 'warning') => void;
     scheduleNotification: (title: string, body: string, seconds?: number) => Promise<string | null>;
     cancelAllNotifications: () => Promise<void>;
+    syncWithLeaderboard: () => Promise<void>;
 }
 
 const GameContext = createContext<GameContextType | undefined>(undefined);
 
 export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    const { user } = useAuth();
     const [gameData, setGameData] = useState<GameData | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
     const [isInitialized, setIsInitialized] = useState(false);
+    const [guestData, setGuestData] = useState<GameData | null>(null);
 
     // Получаем безопасные настройки аудио
     const getSafeAudioSettings = (): AudioSettings => {
@@ -57,72 +76,98 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         initializeAudio();
     }, []);
 
-    // Инициализация данных игры
+    // Загрузка данных пользователя
     useEffect(() => {
         let isMounted = true;
 
-        const initializeData = async () => {
+        const loadUserData = async () => {
             try {
-                console.log('Starting game data initialization...');
-                const data = await loadGameData();
+                setIsLoading(true);
 
-                if (isMounted) {
-                    setGameData(data);
-                    setIsInitialized(true);
+                let data: GameData;
 
-                    // Применяем настройки звука после загрузки данных
-                    const audioSettings = data.audioSettings;
-                    AudioService.setMuted(!audioSettings.sound);
-                    AudioService.setMusicMuted(!audioSettings.music);
+                if (user) {
+                    // Загружаем данные пользователя
+                    data = await loadGameData(user);
 
-                    // Применяем настройки вибрации
-                    if (audioSettings.vibration !== undefined) {
-                        AudioService.setVibrationEnabled(audioSettings.vibration);
-                    }
+                    // Переносим гостевые данные если есть
+                    data = await migrateGuestToUser(user, data);
 
-                    // Инициализируем notifications и отменяем запланированные, если выключено
-                    try {
-                        await NotificationService.initNotifications();
-                        if (audioSettings.notifications === false) {
-                            await NotificationService.cancelAllScheduled();
+                    console.log('Loaded user game data:', data);
+
+                    // Синхронизируем с лидербордом
+                    if (data.highScore > 0) {
+                        try {
+                            await LeaderboardService.updateUserScore(user, data);
+                        } catch (error) {
+                            console.error('Error syncing with leaderboard:', error);
                         }
-                    } catch (err) {
-                        console.error('Notification init error:', err);
                     }
-
-                    console.log('GameContext initialized successfully');
+                } else {
+                    // Для гостя
+                    data = await loadGameData(null);
+                    console.log('Loaded guest game data:', data);
                 }
+
+                if (!isMounted) return;
+
+                setGameData(data);
+
+                // Применяем настройки звука
+                const audioSettings = data.audioSettings;
+                AudioService.setMuted(!audioSettings.sound);
+                AudioService.setMusicMuted(!audioSettings.music);
+
+                if (audioSettings.vibration !== undefined) {
+                    AudioService.setVibrationEnabled(audioSettings.vibration);
+                }
+
+                setIsInitialized(true);
             } catch (error) {
-                console.error('Error initializing game data:', error);
+                console.error('Error loading game data:', error);
                 if (isMounted) {
-                    // В случае ошибки используем данные по умолчанию
                     setGameData(DEFAULT_GAME_DATA);
                     setIsInitialized(true);
+                }
+            } finally {
+                if (isMounted) {
+                    setIsLoading(false);
                 }
             }
         };
 
-        initializeData();
+        loadUserData();
 
         return () => {
             isMounted = false;
         };
-    }, []);
+    }, [user]);
 
     const saveData = async (newData: GameData) => {
         if (!isInitialized) return;
 
         setGameData(newData);
+
         try {
-            await saveGameData(newData);
-            console.log('Game data saved successfully');
+            if (user) {
+                // Сохраняем данные пользователя
+                await saveGameData(user, newData);
+                console.log('Game data saved for user:', user.email);
+            } else {
+                // Для гостя сохраняем в локальное состояние
+                setGuestData(newData);
+                // И в сессию на случай перезагрузки
+                const guestKey = getStorageKey(null);
+                await AsyncStorage.setItem(guestKey, JSON.stringify(newData));
+                console.log('Game data saved for guest session');
+            }
         } catch (error) {
             console.error('Error saving game data:', error);
         }
     };
 
     const updateStats = (newStats: Partial<GameStats>) => {
-        if (!gameData || !isInitialized) return;
+        if (!gameData || !isInitialized || !user) return;
 
         const updatedData = {
             ...gameData,
@@ -132,7 +177,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const addCoins = (amount: number) => {
-        if (!gameData || !isInitialized) return;
+        if (!gameData || !isInitialized || !user) return;
 
         const updatedData = {
             ...gameData,
@@ -156,6 +201,13 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             };
             console.log('New high score saved:', score);
             saveData(updatedData);
+
+            // Синхронизируем с таблицей лидеров только если есть пользователь
+            if (user) {
+                LeaderboardService.updateUserScore(user, updatedData).catch(error => {
+                    console.error('Error updating leaderboard:', error);
+                });
+            }
         } else {
             console.log('Score is not higher than current record');
         }
@@ -181,12 +233,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
         if (settings.notifications !== undefined) {
             if (settings.notifications) {
-                // включили уведомления — инициализируем и даем тестовую нотификацию
                 NotificationService.initNotifications()
-                    .then(() => NotificationService.scheduleNotification({ title: 'FallZone', body: 'Уведомления включены! Загляните в игру.', seconds: 10 }))
+                    .then(() => NotificationService.scheduleNotification({
+                        title: 'FallZone',
+                        body: 'Уведомления включены! Загляните в игру.',
+                        seconds: 10
+                    }))
                     .catch(e => console.error('Notification schedule error:', e));
             } else {
-                // выключили уведомления — отменяем все
                 NotificationService.cancelAllScheduled().catch(e => console.error('Notification cancel error:', e));
             }
         }
@@ -195,7 +249,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const unlockSkin = (skinId: string) => {
-        if (!gameData || !isInitialized) return;
+        if (!gameData || !isInitialized || !user) return;
 
         const updatedSkins = gameData.skins.map(skin =>
             skin.id === skinId ? { ...skin, unlocked: true } : skin
@@ -205,7 +259,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const equipSkin = (skinId: string) => {
-        if (!gameData || !isInitialized) return;
+        if (!gameData || !isInitialized || !user) return;
 
         const updatedSkins = gameData.skins.map(skin =>
             ({ ...skin, equipped: skin.id === skinId })
@@ -231,11 +285,12 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         deathBy?: 'comet' | 'asteroid' | 'drone' | 'wall';
         bonusesCollected?: { type: 'shield' | 'magnet' | 'slowmo' | 'coin'; count: number }[];
     }) => {
-        if (!gameData || !isInitialized) return;
+        if (!gameData || !isInitialized || !user) return;
 
         console.log('Recording game session:', sessionData);
 
         const bonusesByType = { ...gameData.stats.bonusesByType };
+        const deathsByObstacle = { ...gameData.stats.deathsByObstacle };
 
         if (sessionData.bonusesCollected) {
             sessionData.bonusesCollected.forEach(bonus => {
@@ -243,7 +298,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             });
         }
 
-        const deathsByObstacle = { ...gameData.stats.deathsByObstacle };
         if (sessionData.deathBy) {
             deathsByObstacle[sessionData.deathBy] += 1;
         }
@@ -264,17 +318,24 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
         };
 
-        if (sessionData.score > gameData.highScore) {
+        if (sessionData.score > updatedData.highScore) {
             updatedData.highScore = sessionData.score;
             console.log('New record in session data:', sessionData.score);
         }
 
         saveData(updatedData);
+
+        // Синхронизируем с таблицей лидеров
+        LeaderboardService.updateUserScore(user, updatedData).catch(error => {
+            console.error('Error updating leaderboard after session:', error);
+        });
     };
 
     const refreshGameData = async () => {
+        if (!user) return;
+
         try {
-            const data = await loadGameData();
+            const data = await loadGameData(user);
             if (isInitialized) {
                 setGameData(data);
                 console.log('Game data refreshed successfully');
@@ -284,7 +345,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     };
 
-    // Аудио методы с полной защитой
+    // Аудио методы
     const playSound = (soundName: string) => {
         if (!isInitialized) return;
 
@@ -319,7 +380,6 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     };
 
-    // Новые методы для переключения музыки между экранами
     const switchToMenuMusic = () => {
         if (!isInitialized) return;
 
@@ -359,13 +419,26 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     };
 
+    const syncWithLeaderboard = async () => {
+        if (!user || !gameData) return;
+
+        try {
+            await LeaderboardService.updateUserScore(user, gameData);
+            console.log('Game data synced with leaderboard');
+        } catch (error) {
+            console.error('Error syncing with leaderboard:', error);
+        }
+    };
+
     // Показываем loading пока данные не загружены
-    if (!isInitialized) {
-        return null;
+    if (isLoading) {
+        // Вместо null возвращаем пустой View с фоном
+        return <LoadingScreen />;
     }
 
     const contextValue: GameContextType = {
         gameData: gameData || DEFAULT_GAME_DATA,
+        isLoading,
         updateStats,
         addCoins,
         updateHighScore,
@@ -397,7 +470,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
             } catch (e) {
                 console.error('cancelAllNotifications error:', e);
             }
-        }
+        },
+        syncWithLeaderboard
     };
 
     return (

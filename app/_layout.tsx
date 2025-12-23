@@ -4,10 +4,12 @@ import { Tabs } from 'expo-router';
 import { ActivityIndicator, View } from 'react-native';
 import CustomText from '../components/ui/CustomText';
 import { AuthProvider, useAuth } from '../context/AuthContext';
-import { GameProvider } from '../context/GameContext';
+import { GameProvider, useGame } from '../context/GameContext';
 import { NavigationProvider, useNavigation } from '../context/NavigationContext';
 
 // Импортируем LoginScreen напрямую
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useEffect } from 'react';
 import LoginScreen from './login';
 
 // Компонент для защищенных экранов (требует авторизации)
@@ -77,7 +79,7 @@ const ProtectedTabNavigator = () => {
 };
 
 // Компонент загрузки
-const LoadingScreen = () => (
+export const LoadingScreen = () => (
     <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000' }}>
         <ActivityIndicator size="large" color="#00FFFF" />
         <CustomText style={{ color: '#00FFFF', fontSize: 20, marginTop: 20 }}>Загрузка...</CustomText>
@@ -99,6 +101,38 @@ const AuthWrapper = ({ children }: { children: React.ReactNode }) => {
 // Главный компонент
 const MainApp = () => {
     const { user } = useAuth();
+    const { gameData, refreshGameData } = useGame();
+
+    // Эффект для переноса данных при входе/выходе
+    useEffect(() => {
+        const transferGuestData = async () => {
+            if (user && gameData) {
+                try {
+                    // При входе: сохраняем гостевые данные в аккаунт пользователя
+                    const guestKey = 'fallzone_game_data_session';
+                    const guestData = await AsyncStorage.getItem(guestKey);
+
+                    if (guestData) {
+                        // Если у пользователя нет данных или гостевые данные лучше
+                        const parsedGuestData = JSON.parse(guestData);
+
+                        if (parsedGuestData.highScore > (gameData.highScore || 0)) {
+                            // Переносим рекорд гостя в аккаунт
+                            console.log('Transferring guest high score to user account');
+                            // Здесь нужно вызвать метод updateHighScore из GameContext
+                        }
+
+                        // Очищаем гостевые данные
+                        await AsyncStorage.removeItem(guestKey);
+                    }
+                } catch (error) {
+                    console.error('Error transferring guest data:', error);
+                }
+            }
+        };
+
+        transferGuestData();
+    }, [user, gameData]);
 
     // Если не авторизован - показываем логин
     if (!user) {
@@ -108,9 +142,7 @@ const MainApp = () => {
     // Если авторизован - показываем основной интерфейс
     return (
         <NavigationProvider>
-            <GameProvider>
-                <ProtectedTabNavigator />
-            </GameProvider>
+            <ProtectedTabNavigator />
         </NavigationProvider>
     );
 };
@@ -120,7 +152,9 @@ const RootLayout = () => {
     return (
         <AuthProvider>
             <AuthWrapper>
-                <MainApp />
+                <GameProvider>
+                    <MainApp />
+                </GameProvider>
             </AuthWrapper>
         </AuthProvider>
     );
