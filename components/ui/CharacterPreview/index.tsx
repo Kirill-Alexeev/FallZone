@@ -1,20 +1,42 @@
+// components/ui/CharacterPreview.tsx
 import React from 'react';
 import { View } from 'react-native';
-import PlayerDefaultIdle from '../../../assets/sprites/characters/player_default_idle.png';
+import { useGame } from '../../../context/GameContext';
 import { characterPreviewStyles } from './CharacterPreview.styles';
 import IdleAnimation from './IdleAnimation';
 
 const CharacterPreview = () => {
+    const { gameData, getCurrentSkin } = useGame();
+
+    // Получаем текущий скин
+    const currentSkin = getCurrentSkin();
+
+    // Выбираем изображение в зависимости от скина
+    const getSpriteSource = () => {
+        const skinId = currentSkin?.id || 'default';
+
+        switch (skinId) {
+            case 'green':
+                return require('../../../assets/sprites/characters/player_green_idle.png');
+            case 'red':
+                return require('../../../assets/sprites/characters/player_red_idle.png');
+            case 'gold':
+                return require('../../../assets/sprites/characters/player_gold_idle.png');
+            default:
+                return require('../../../assets/sprites/characters/player_default_idle.png');
+        }
+    };
+
     return (
         <View style={characterPreviewStyles.container}>
             <IdleAnimation
-                spriteWidth={30}     // Новая ширина кадра
-                spriteHeight={42}    // Высота
-                frames={4}           // 4 кадра
-                frameRate={5}        // Скорость анимации (3 кадра в секунду)
-                spriteSource={PlayerDefaultIdle}
-                scale={3}            // Масштаб
-                gap={1}              // Промежуток 1px
+                spriteWidth={30}
+                spriteHeight={42}
+                frames={4}
+                frameRate={5}
+                spriteSource={getSpriteSource()}
+                scale={3}
+                gap={1}
                 style={characterPreviewStyles.animation}
             />
         </View>

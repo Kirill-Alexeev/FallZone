@@ -1,44 +1,54 @@
+// components/Player.tsx (если он у тебя есть)
 import React from 'react';
 import { Image, View } from 'react-native';
-import { playerStyles } from './Player.styles';
+import { useGame } from '../../context/GameContext';
 
 interface PlayerProps {
     x: number;
     y: number;
     size: number;
     rotation: number;
-    character: string;
+    // Убираем character, т.к. теперь используем скины из контекста
 }
 
-const Player: React.FC<PlayerProps> = ({ x, y, size, rotation, character }) => {
-    const getCharacterImage = (char: string) => {
-        switch (char) {
-            case 'astronaut':
+const Player: React.FC<PlayerProps> = ({ x, y, size, rotation }) => {
+    const { getCurrentSkin } = useGame();
+
+    const currentSkin = getCurrentSkin();
+
+    // Выбираем статическое изображение в зависимости от скина
+    const getPlayerImage = () => {
+        const skinId = currentSkin?.id || 'default';
+
+        switch (skinId) {
+            case 'green':
+                return require('../../assets/sprites/characters/player_green_static.png');
+            case 'red':
+                return require('../../assets/sprites/characters/player_red_static.png');
+            case 'gold':
+                return require('../../assets/sprites/characters/player_gold_static.png');
             default:
-                // Используем статичное изображение вместо spritesheet
                 return require('../../assets/sprites/characters/player_default_static.png');
         }
     };
 
-    const playerImage = getCharacterImage(character);
-
     return (
-        <View style={[
-            playerStyles.player,
-            {
+        <View
+            style={{
+                position: 'absolute',
                 left: x,
                 top: y,
                 width: size,
                 height: size,
-                transform: [{ rotate: `${rotation}deg` }]
-            }
-        ]}>
+                transform: [{ rotate: `${rotation}deg` }],
+            }}
+        >
             <Image
-                source={playerImage}
+                source={getPlayerImage()}
                 style={{
                     width: '100%',
                     height: '100%',
-                    resizeMode: 'contain'
+                    resizeMode: 'contain',
                 }}
             />
         </View>

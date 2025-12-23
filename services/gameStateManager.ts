@@ -166,6 +166,47 @@ class GameStateManager {
         });
     }
 
+    async unlockSkin(skinId: string) {
+        await this.saveWithQueue((current) => {
+            // Ищем скин
+            const skin = current.skins.find(s => s.id === skinId);
+            if (!skin) {
+                console.error(`Skin ${skinId} not found`);
+                return current;
+            }
+
+            // НЕ проверяем баланс здесь - он уже проверен в GameContext
+            // Просто разблокируем скин если он найден
+
+            const updatedSkins = current.skins.map(s =>
+                s.id === skinId ? { ...s, unlocked: true } : s
+            );
+
+            console.log(`Unlocked skin: ${skinId}`);
+
+            return {
+                ...current,
+                skins: updatedSkins
+            };
+        });
+    }
+
+    async equipSkin(skinId: string) {
+        await this.saveWithQueue((current) => {
+            const updatedSkins = current.skins.map(skin =>
+                ({ ...skin, equipped: skin.id === skinId })
+            );
+
+            console.log(`Equipped skin: ${skinId}`);
+
+            return {
+                ...current,
+                skins: updatedSkins,
+                currentSkinId: skinId
+            };
+        });
+    }
+
     async reset() {
         this.currentData = DEFAULT_GAME_DATA;
         this.user = null;

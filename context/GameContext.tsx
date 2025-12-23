@@ -192,7 +192,85 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     };
 
-    // ... остальные методы (unlockSkin, equipSkin и т.д.) аналогично
+
+    const unlockSkin = async (skinId: string) => {
+        if (!gameData || !isInitialized || !user) {
+            console.log('Cannot unlock skin: missing data/user');
+            return;
+        }
+
+        console.log(`Unlock skin called for: ${skinId}`);
+        console.log('Available skins:', gameData.skins.map(s => ({ id: s.id, unlocked: s.unlocked })));
+
+        // Находим скин
+        const skin = gameData.skins.find(s => s.id === skinId);
+        if (!skin) {
+            console.error(`❌ Skin ${skinId} not found in game data`);
+            return;
+        }
+
+        // Проверяем баланс
+        if (gameData.coins < skin.price) {
+            console.error(`❌ Not enough coins: ${gameData.coins} < ${skin.price}`);
+            return;
+        }
+
+        try {
+            console.log(`Proceeding with unlock for ${skinId}, price: ${skin.price}`);
+
+            // 1. Списываем монеты
+            await GameStateManager.addCoins(-skin.price);
+
+            // 2. Разблокируем скин
+            await GameStateManager.unlockSkin(skinId);
+
+            // 3. Обновляем локальное состояние
+            const updatedSkins = gameData.skins.map(s =>
+                s.id === skinId ? { ...s, unlocked: true } : s
+            );
+
+            const updatedData = {
+                ...gameData,
+                skins: updatedSkins,
+                coins: gameData.coins - skin.price
+            };
+
+            setGameData(updatedData);
+
+            console.log(`✅ Skin ${skinId} unlocked and coins deducted`);
+
+        } catch (error) {
+            console.error('❌ Error in unlockSkin:', error);
+        }
+    };
+
+    const equipSkin = async (skinId: string) => {
+        if (!gameData || !isInitialized || !user) {
+            console.log('Cannot equip skin: missing data/user');
+            return;
+        }
+
+        try {
+            await GameStateManager.equipSkin(skinId);
+            console.log(`✅ Skin ${skinId} equipped successfully`);
+
+            // ОБНОВЛЯЕМ ЛОКАЛЬНОЕ СОСТОЯНИЕ
+            const updatedSkins = gameData.skins.map(skin =>
+                ({ ...skin, equipped: skin.id === skinId })
+            );
+
+            const updatedData = {
+                ...gameData,
+                skins: updatedSkins,
+                currentSkinId: skinId
+            };
+
+            setGameData(updatedData);
+
+        } catch (error) {
+            console.error('❌ Error equipping skin:', error);
+        }
+    };
 
     const syncWithLeaderboard = async () => {
         if (!user || !gameData) return;
@@ -223,14 +301,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         addCoins,
         updateHighScore,
         updateAudioSettings,
-        unlockSkin: async (skinId: string) => {
-            if (!gameData || !isInitialized || !user) return;
-            // ... реализация
-        },
-        equipSkin: async (skinId: string) => {
-            if (!gameData || !isInitialized || !user) return;
-            // ... реализация
-        },
+        unlockSkin,
+        equipSkin,
         getCurrentSkin: () => {
             if (!gameData) return undefined;
             return gameData.skins.find(skin => skin.id === gameData.currentSkinId);

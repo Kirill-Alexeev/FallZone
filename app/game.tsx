@@ -275,7 +275,6 @@ const GameScreen = () => {
                                 y={gameState.player.y}
                                 size={gameState.player.size}
                                 rotation={gameState.player.rotation}
-                                character="astronaut"
                             />
 
                             {/* Препятствия */}

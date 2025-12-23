@@ -61,22 +61,32 @@ export const DEFAULT_SKINS: Skin[] = [
         animationSpeed: 5
     },
     {
-        id: 'alien',
-        name: 'Инопланетянин',
-        price: 100,
+        id: 'green',
+        name: 'Зеленый скафандр',
+        price: 5,
         unlocked: false,
         equipped: false,
-        preview: 'assets/sprites/characters/player_alien_idle.png',
+        preview: 'assets/sprites/characters/player_green_idle.png',
         animationFrames: 4,
         animationSpeed: 5
     },
     {
-        id: 'robot',
-        name: 'Робот',
-        price: 200,
+        id: 'red',
+        name: 'Красный скафандр',
+        price: 10,
         unlocked: false,
         equipped: false,
-        preview: 'assets/sprites/characters/player_robot_idle.png',
+        preview: 'assets/sprites/characters/player_red_idle.png',
+        animationFrames: 4,
+        animationSpeed: 5
+    },
+    {
+        id: 'gold',
+        name: 'Золотой скафандр',
+        price: 15,
+        unlocked: false,
+        equipped: false,
+        preview: 'assets/sprites/characters/player_gold_idle.png',
         animationFrames: 4,
         animationSpeed: 5
     }

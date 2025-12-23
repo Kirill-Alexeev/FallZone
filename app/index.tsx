@@ -25,6 +25,9 @@ const HomeScreen = () => {
     // Безопасное использование useGame - только если пользователь авторизован
     const gameContext = user ? useGame() : null;
 
+    const { getCurrentSkin } = useGame();
+    const currentSkin = getCurrentSkin();
+
     const playSound = (soundName: string) => {
         if (gameContext) {
             try {
@@ -142,6 +145,14 @@ const HomeScreen = () => {
             </View>
             <View style={homeScreenStyles.center}>
                 <CharacterPreview />
+
+                {/* Отображаем название текущего скина */}
+                {currentSkin && (
+                    <CustomText>
+                        Скин: {currentSkin.name}
+                    </CustomText>
+                )}
+
                 <CustomButton
                     title="Полетели!"
                     onPress={startGame}
