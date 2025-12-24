@@ -1,50 +1,204 @@
-# Welcome to your Expo app 👋
+📱 FallZone — Mobile App (React Native + Expo)
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+FallZone — мобильное приложение, разработанное с использованием
+React Native, Expo, TypeScript, с поддержкой тестирования (Jest + Detox) и Expo Router.
 
-## Get started
+Проект запускается через Expo Go, эмуляторы Android / iOS и development-сборки.
 
-1. Install dependencies
+🧾 Содержание
 
-   ```bash
-   npm install
-   ```
+📌 Описание проекта
 
-2. Start the app
+🚀 Функциональность
 
-   ```bash
-   npx expo start
-   ```
+⚙️ Технологический стек
 
-In the output, you'll find options to open the app in a
+📂 Структура проекта
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+🛠 Установка и запуск
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+🧪 Тестирование
 
-## Get a fresh project
+🏗 Архитектура и подходы
 
-When you're ready, run:
+🗂 Полезные документы проекта
 
-```bash
-npm run reset-project
-```
+🔧 Полезные команды
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+👥 Авторы и участие в разработке
 
-## Learn more
+📄 Лицензия
 
-To learn more about developing your project with Expo, look at the following resources:
+📌 Описание проекта
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+FallZone — это обучающий / практический проект в области мобильной разработки,
+созданный на базе React Native + Expo.
 
-## Join the community
+Проект используется для:
 
-Join our community of developers creating universal apps.
+изучения мобильной разработки
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+отработки архитектурных подходов
+
+работы с API, контекстом и хуками
+
+написания unit- и e2e-тестов
+
+оптимизации производительности
+
+🚀 Основная функциональность
+
+✔ работа через Expo Go и dev-сборки
+✔ навигация на базе Expo Router
+✔ контекст приложения и глобальное состояние
+✔ сервисный слой (services / API)
+✔ кастомные хуки
+✔ поддержка e2e-тестов (Detox)
+✔ unit-тестирование (Jest)
+
+⚙️ Технологический стек
+
+Основные технологии
+
+React Native
+
+Expo
+
+Expo Router
+
+TypeScript
+
+Инфраструктура и сборка
+
+Metro Bundler
+
+Expo Config
+
+Тестирование
+
+Jest
+
+React Testing Library
+
+Detox (E2E)
+
+Прочее
+
+ESLint
+
+Prettier
+
+📂 Структура проекта
+FallZone/
+ ├── app/                # Экраны и маршруты (file-based routing)
+ ├── components/         # UI-компоненты
+ ├── context/            # Контекст и глобальное состояние
+ ├── hooks/              # Кастомные хуки
+ ├── services/           # API / логика приложения
+ ├── assets/             # Шрифты, изображения, звуки
+ ├── e2e/                # Detox тесты
+ ├── __tests__/          # Unit-тесты
+ ├── __mocks__/          # Моки для тестов
+ ├── .expo/              # Внутренние файлы Expo
+ ├── AUDIO_SETTINGS_FIX.md
+ ├── NAVIGATION_CONTROL.md
+ ├── OBSTACLE_SETTINGS.md
+ ├── PERFORMANCE_OPTIMIZATION.md
+ └── README.md
+
+🛠 Установка и запуск проекта
+1️⃣ Установить зависимости
+npm install
+
+
+(при необходимости)
+
+npm install --legacy-peer-deps
+
+2️⃣ Запуск в режиме разработки
+npx expo start
+
+
+Доступные режимы:
+
+📱 Expo Go
+
+🤖 Android Emulator
+
+🍎 iOS Simulator
+
+🧩 Development Build
+
+3️⃣ Запуск с очисткой кеша
+npx expo start -c
+
+🧪 Тестирование
+Unit-тесты (Jest)
+npm run test
+
+Запуск e2e-тестов (Detox)
+
+Подготовка сборки:
+
+npm run detox:build
+
+
+Запуск тестов:
+
+npm run detox:test
+
+
+Конфигурация: .detoxrc.js
+
+🏗 Архитектурные подходы
+
+В проекте используются:
+
+разделение слоёв (UI / hooks / services / context)
+
+file-based routing (Expo Router)
+
+типизация через TypeScript
+
+тест-ориентированная разработка на ключевых модулях
+
+документация технических решений в .md файлах
+
+🗂 Внутренние технические документы
+
+Файлы описывают решения и настройки проекта:
+
+AUDIO_SETTINGS_FIX.md — исправление проблем со звуком
+
+NAVIGATION_CONTROL.md — управление навигацией
+
+OBSTACLE_SETTINGS.md — игровые/логические параметры препятствий
+
+PERFORMANCE_OPTIMIZATION.md — оптимизация производительности
+
+🔧 Полезные команды
+
+Очистка npm кеша:
+
+npm cache verify
+
+
+Обновление зависимостей:
+
+npm update
+
+
+Проверка типов:
+
+npx tsc
+
+👥 Авторы и участники проекта
+
+Автор проекта:
+
+Савиди Георгий 231-321
+Алексеев Кирилл 231-321
+Замятин Максим 231-321
+UI / UX —
+
+Тестирование —
